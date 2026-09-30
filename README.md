@@ -1,53 +1,73 @@
-# Vértice Gerencial
+# Vértice Gerencial · versión 2.1
 
-Reportes para la toma de decisiones a partir de los archivos que entrega la empresa (Excel, CSV, PDF, Word, PowerPoint, exportes de Power BI, JSON, XML, HTML o una tabla pegada). El informe se arma con el **Principio de la Pirámide** (Barbara Minto): primero la conclusión y la decisión que se pide, después cuatro argumentos MECE con su evidencia.
+Reportes para la toma de decisiones a partir de los archivos que entrega la empresa (Excel, CSV, PDF con texto o escaneado, imágenes, Word, PowerPoint, exportes de Power BI, JSON, XML, HTML o una tabla pegada). El informe se arma con el **Principio de la Pirámide** (Barbara Minto): primero la conclusión y la decisión que se pide, después cuatro argumentos MECE con su evidencia.
+
+## Qué hay de nuevo en la 2.1
+
+**Lectura**
+
+- **PDF escaneados e imágenes sin internet**: el reconocimiento de texto (OCR) corre en tu equipo. Si el PDF trae una capa de texto de otro OCR (común en documentos firmados o escaneados por el banco), Vértice la descarta y lo lee de nuevo.
+- **Balance de 8 columnas** (PDF con texto, PDF escaneado o Excel): reconoce cuentas, código y nombre, y verifica todas las cuadraturas (debe = haber, deudor = acreedor, activo − pasivo = resultado, sumas impresas). Si un monto quedó mal leído, lo corrige con esas cuadraturas y lo marca con ✎ en el anexo.
+- **Estados financieros en PDF** (balance clasificado y estado de resultados): encabezados de sección, columnas de notas, balances partidos en dos tablas y años escritos solo en el título ("al 31 de diciembre de 2025 y 2024").
+- **Excel con varias tablas por hoja**, períodos parciales ("ene–mar 2026"), formularios 29 del SII y hojas de conciliación.
+- Toma el **nombre, RUT y giro** de la empresa desde el encabezado del balance y sugiere la industria.
+
+**Análisis**
+
+- **Informe del consultor** redactado por el motor de reglas: conclusión, qué pasó en los resultados, cómo se financió la empresa, solidez, hallazgos contables, riesgos, recomendaciones, escenarios y límites del análisis.
+- **Análisis financiero profundo**: estados comparativos (análisis horizontal y vertical), flujo de caja indirecto, capital de trabajo y NOF, DuPont, Z″ de Altman, punto de equilibrio y hallazgos tipo auditoría (depreciación o impuestos sin registrar, ventas del F29 fuera de la contabilidad, dependencia de proveedores y otros).
+- **Proyecciones a 3 años** con escenarios base, pesimista y optimista, sensibilidad y un **simulador** para cambiar los supuestos.
+- Las descargas en **PDF**, **PowerPoint** y **Excel** incluyen el informe, los estados, la caja, las proyecciones y el balance leído.
 
 ## Qué entrega
 
 - **Mensaje principal** con impacto estimado y la decisión que se pide al directorio.
 - **Cuatro pilares sin traslapes**: A · Ingresos y mercado, B · Costos, margen y gastos, C · Inventario y operación, D · Solidez financiera. Cada uno trae hallazgos, causas, gráficos, riesgos y acciones.
-- **KPIs**: producto más vendido por año, semestre, trimestre, mes y semana; fechas de mayor y menor venta; sucursales con más y menos ingresos; estacionalidad; comparación con el período anterior; efecto precio, volumen y mezcla.
-- **Gastos** ordenados de mayor a menor, presupuesto vs real, punto de equilibrio.
+- **KPIs**: producto más vendido por año, semestre, trimestre, mes y semana; fechas de mayor y menor venta; sucursales; estacionalidad; comparación con el período anterior; efecto precio, volumen y mezcla.
+- **Gastos** ordenados de mayor a menor, presupuesto vs real y punto de equilibrio.
 - **Inventario**: cobertura, quiebres, sobre-stock y productos fuera de temporada.
-- **Precios frente a la competencia** (tus archivos) y, en claude.ai, precios de mercado referenciales estimados con IA.
 - **Ratios financieros** con referencias por industria (Damodaran, NYU Stern, enero 2026, empresas de EE.UU.: úsalas como orientación).
 - **Mapa de riesgos**, tres alternativas para el directorio, plan a 30-60-90 días y tablero de seguimiento.
 - **Calidad de datos**: falencias detectadas, correcciones automáticas, cuadraturas entre fuentes y la estructura de datos recomendada.
-- Descargas: **PDF ejecutivo**, **PowerPoint** con gráficos editables y **Excel** con anexos y datos limpios.
 
 ## Dos formas de usarla
 
 | | En claude.ai | App instalable (esta carpeta) |
 |---|---|---|
-| Análisis, gráficos, alertas y recomendaciones | Sí | Sí |
+| Lectura, análisis, informe del consultor, proyecciones y simulador | Sí | Sí |
+| PDF escaneados e imágenes | Sí (OCR en tu equipo; si la vista no lo permite, con IA) | Sí, sin internet |
 | Descargas PDF, PowerPoint y Excel | Sí | Sí |
 | Funciona sin conexión | No | Sí |
-| Redacción con IA, contexto de la industria, precios de mercado con IA, asistente y lectura de imágenes o PDF escaneados | Sí | No |
+| Redacción con IA, contexto de la industria, precios de mercado con IA y asistente | Sí | No |
 
 Los archivos se procesan en el navegador y no se suben a ningún servidor. En claude.ai, solo cuando usas una función con IA se envía a Claude un resumen de las cifras calculadas.
 
-## Publicarla en GitHub Pages
+## Actualizar tu app en GitHub Pages (si ya la tienes publicada)
+
+1. Entra a tu repositorio (por ejemplo `github.com/TU-USUARIO/vertice`).
+2. Usa **Add file → Upload files** y arrastra **todo el contenido** de esta carpeta: `index.html`, `sw.js`, `manifest.webmanifest`, `.nojekyll` y las carpetas `vendor`, `fonts` e `icons` (la carpeta `vendor` ahora trae la subcarpeta `tesseract`, que es el lector de PDF escaneados). Los archivos con el mismo nombre se reemplazan.
+3. Presiona **Commit changes** y espera uno o dos minutos.
+4. Abre la app con conexión: toma la versión nueva sola. Si todavía ves la anterior, ciérrala y ábrela de nuevo (en el navegador, Ctrl + F5).
+
+## Publicarla por primera vez
 
 1. En GitHub, crea un repositorio nuevo, por ejemplo `vertice`, público.
-2. Entra al repositorio y usa **Add file → Upload files**. Arrastra **todo el contenido** de esta carpeta: `index.html`, `sw.js`, `manifest.webmanifest` y las carpetas `vendor`, `fonts` e `icons`. Presiona **Commit changes**.
+2. **Add file → Upload files**, arrastra todo el contenido de esta carpeta y presiona **Commit changes**.
 3. Ve a **Settings → Pages**. En *Build and deployment* elige **Deploy from a branch**, rama **main** y carpeta **/ (root)**. Guarda.
 4. En uno o dos minutos la app queda en `https://TU-USUARIO.github.io/vertice/`.
 
 ## Instalarla
 
-- **Chrome o Edge (Windows o Mac)**: abre la dirección y usa el botón **Instalar** de la app o el ícono de instalar en la barra de direcciones. Queda con su ícono y ventana propia.
+- **Chrome o Edge (Windows o Mac)**: abre la dirección y usa el botón **Instalar** de la app o el ícono de instalar en la barra de direcciones.
 - **Android**: menú ⋮ → **Instalar app**.
 - **iPhone o iPad (Safari)**: botón Compartir → **Agregar a inicio**.
 
-Después de abrirla una vez con conexión, funciona sin internet.
-
-## Actualizar
-
-Sube la nueva versión reemplazando los archivos en el repositorio. La app instalada toma la versión nueva la próxima vez que se abre con conexión.
+Después de abrirla una vez con conexión, funciona sin internet (incluido el lector de PDF escaneados).
 
 ## Consejos para mejores reportes
 
-- Descarga la **Plantilla de datos** (menú Exportar) para ver las columnas mínimas de cada tabla.
-- **Power BI**: exporta los datos del visual (… → Exportar datos → .xlsx o .csv) o exporta el informe a PDF o PowerPoint. Un archivo .pbix no trae los datos legibles fuera de Power BI; Vértice lo detecta y explica cómo exportarlo.
-- Completa **La empresa** (industria y contexto): la industria define las referencias y los umbrales de inventario, y el contexto se cita en las causas.
-- Revisa el paso **2 · Datos**: ahí se corrigen el tipo de cada tabla, el rol de cada columna y los gastos atípicos. Lo que ajustes se recuerda para las próximas cargas.
+- **Estados financieros**: carga juntos el balance de 8 columnas de cada año (o los estados financieros) y, si los tienes, los formularios 29 del período. Con dos o más años se activan el flujo de caja, las tendencias y las proyecciones.
+- **PDF escaneados**: mientras más nítido el escaneo, mejor. Revisa el anexo «Balance de 8 columnas leído»: los montos corregidos quedan marcados con ✎ y muestran lo que se leyó.
+- **Ventas por producto o cliente** (libro de ventas, RCV del SII o el Excel del sistema): suman el análisis de productos, márgenes por línea, fechas y estacionalidad.
+- **Power BI**: exporta los datos del visual (… → Exportar datos → .xlsx o .csv) o el informe a PDF o PowerPoint. Un archivo .pbix no trae los datos legibles fuera de Power BI.
+- Completa **La empresa** (industria y contexto) y revisa el paso **2 · Datos**: ahí se corrige el tipo de cada tabla y el rol de cada columna. Lo que ajustes se recuerda para las próximas cargas.
