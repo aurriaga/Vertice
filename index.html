@@ -738,7 +738,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="busy" id="busy" hidden><div class="box"><b id="busy-text">Procesando…</b><div class="progress"><i></i></div></div></div>
 
-<script>window.V = window.V || {}; V.CONFIG = {"libBase":"vendor/","pwa":true,"version":"2.2.0"};</script>
+<script>window.V = window.V || {}; V.CONFIG = {"libBase":"vendor/","pwa":true,"version":"2.2.1"};</script>
 <script>
 /* ==== 01_util.js ==== */
 /* Vértice · utilidades: formato es-CL, fechas como número de día UTC, estadística, texto */
@@ -1638,6 +1638,11 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   };
   /* avisos de avance para lecturas largas (OCR): la app reemplaza esta función */
   L.onProgress = null;
+  // una operación de pdf.js u OCR que no responde no debe dejar la lectura detenida en una página
+  const withTimeout = (pr, ms, what) => {
+    let tm = null;
+    return Promise.race([pr, new Promise((_, rej) => (tm = setTimeout(() => rej(new Error(what || 'la página tardó demasiado')), ms)))]).finally(() => clearTimeout(tm));
+  };
   const progress = (t) => {
     try {
       if (typeof L.onProgress === 'function') L.onProgress(t);
@@ -2090,13 +2095,19 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       /* usa el worker ya cargado en la página */
     }
     const doc = await pdfjsLib.getDocument({ data: new Uint8Array(buf), isEvalSupported: false, disableFontFace: true, useSystemFonts: false, stopAtErrors: false }).promise;
-    const maxPages = Math.min(doc.numPages, 80);
+    // hasta 300 páginas (una carpeta tributaria trae ~45; unos estados financieros anuales con notas, 100 o más)
+    const maxPages = Math.min(doc.numPages, 300);
     let textChars = 0;
-    const pageTables = [];
+    let pageTables = [];
     const imagePages = [];
+    const failedPages = [];
     for (let p = 1; p <= maxPages; p++) {
-      const page = await doc.getPage(p);
-      const tc = await page.getTextContent();
+      if (doc.numPages > 4) progress('Leyendo ' + file.name + ' · página ' + p + ' de ' + doc.numPages + '…');
+      // una página dañada no detiene la lectura de las demás; los recursos de cada página se liberan al terminarla
+      let page = null;
+      try {
+      page = await withTimeout(doc.getPage(p), 30000, 'la página ' + p + ' no se pudo abrir');
+      const tc = await withTimeout(page.getTextContent(), 30000, 'el texto de la página ' + p + ' no se pudo leer');
       const items = tc.items
         .filter((it) => it.str && it.str.trim())
         .map((it) => ({ s: it.str, x: it.transform[4], y: it.transform[5], w: it.width || it.str.length * Math.abs(it.transform[0]) * 0.5, h: Math.abs(it.transform[3]) || it.height || 10 }));
@@ -2107,11 +2118,34 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const readable = items.map((i) => i.s).join('').replace(/[^A-Za-z0-9ÁÉÍÓÚÑáéíóúñ]/g, '').length;
       const garbled = chars >= 40 && readable / Math.max(1, chars) < 0.45;
       let scan = null;
-      if (chars >= 40 && !garbled) scan = await L.pageScanInfo(page, pdfjsLib).catch(() => null);
+      if (chars >= 40 && !garbled) scan = await withTimeout(L.pageScanInfo(page, pdfjsLib), 20000).catch(() => null);
       if (chars < 40 || garbled || (scan && scan.cover >= 0.3 && scan.invisible)) imagePages.push({ p, chars, garbled: garbled || !!(scan && scan.invisible), ocrLayer: !!(scan && scan.invisible) });
       const res = L.pdfItemsToTables(items);
       res.tables.forEach((t, i) => pageTables.push({ page: p, idx: i, grid: t.grid, title: t.title, notes: t.notes || [] }));
       if (res.text) src.texts.push({ where: 'Página ' + p, text: res.text.slice(0, 6000) });
+      } catch (e) {
+        console.error('página ' + p, e);
+        failedPages.push(p);
+      } finally {
+        try {
+          if (page) page.cleanup();
+        } catch (e) {
+          /* nada */
+        }
+      }
+      if (p % 10 === 0) await U.nextFrame();
+    }
+    // carpeta tributaria del SII: los formularios 29 (uno por página, pares código–valor) se juntan en una tabla
+    // mensual de ventas, exportaciones, IVA y PPM; las páginas de formularios no se leen como tablas sueltas
+    const F29 = L.f29FromPages(pageTables, src.texts);
+    if (F29) {
+      // la portada de la carpeta trae el nombre, el RUT y la actividad del contribuyente
+      const head = pageTables.filter((t) => t.page <= 2).map((t) => t.grid.map((r) => r.filter((v) => v !== null && v !== '').join(' ')).join('\n')).join('\n') + '\n' + src.texts.filter((x) => /^Página [12]$/.test(x.where)).map((x) => x.text).join('\n');
+      const nm = head.match(/Nombre del Emisor:\s*([^\n|]+)/i) || head.match(/Raz[oó]n Social:\s*([^\n|]+)/i);
+      const rut = head.match(/RUT del Emisor:\s*([\d.]+-[\dkK])/i);
+      const giro = head.match(/\b\d{6}\s+([A-ZÁÉÍÓÚÑ ,.]{8,}?)(?:\s+(?:Primera|Segunda) Categor[ií]a|\s*\d{2}\/\d{2}\/\d{4}|$)/m) || head.match(/Actividades Econ[oó]micas:\s*([^\n|]+)/i);
+      if (nm) src.company = { name: nm[1].trim(), rut: rut ? rut[1] : null, giro: giro ? giro[1].trim() : null };
+      pageTables = pageTables.filter((t) => !F29.drop.has(t.page));
     }
     // una tabla sin fila de encabezado que sigue a otra con las mismas columnas (el balance partido en
     // activos y pasivos, o la continuación en la página siguiente) hereda el encabezado de la anterior
@@ -2138,9 +2172,14 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         prev.page = t.page;
         continue;
       }
-      merged.push(Object.assign({ lastOnPage: true }, t));
+      merged.push(Object.assign({ lastOnPage: true, firstPage: t.page }, t));
     }
-    merged.forEach((t) => src.tables.push({ name: 'Página ' + t.page + (t.idx ? ' · tabla ' + (t.idx + 1) : ''), grid: trimGrid(t.grid), meta: { page: t.page, origin: 'pdf', title: t.title, notes: t.notes || [] } }));
+    if (F29 && F29.rows.length) {
+      src.tables.push({ name: 'Formularios 29 (SII)', grid: [F29.head].concat(F29.rows), meta: { origin: 'pdf', title: 'Formulario 29 · declaraciones mensuales de IVA', page: null } });
+      src.notes.push({ level: 'info', text: 'Carpeta tributaria: se leyeron ' + F29.rows.length + ' formulario(s) 29 (' + F29.fromLabel + (F29.rows.length > 1 ? ' a ' + F29.toLabel : '') + ') y se juntaron en una tabla de ventas mensuales declaradas al SII (base imponible, exportaciones, IVA y PPM).' + (F29.f22 ? ' Las páginas del formulario 22 (renta anual) quedan como contexto.' : '') });
+    }
+    // una tabla que sigue en varias páginas se llama "Páginas 3–8" (no solo por la última)
+    merged.forEach((t) => src.tables.push({ name: (t.firstPage && t.firstPage !== t.page ? 'Páginas ' + t.firstPage + '–' + t.page : 'Página ' + t.page) + (t.idx ? ' · tabla ' + (t.idx + 1) : ''), grid: trimGrid(t.grid), meta: { page: t.page, firstPage: t.firstPage || t.page, origin: 'pdf', title: t.title, notes: t.notes || [] } }));
     // páginas escaneadas: reconocimiento de texto (OCR) en el propio equipo
     if (imagePages.length) {
       const ocr = await L.ocrPages(doc, imagePages, src, file.name, window.pdfjsLib);
@@ -2148,8 +2187,20 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         src.scanned = true;
         src.blobs.push(file);
       }
+      if (ocr.failed && ocr.failed.length) src.notes.push({ level: 'warn', text: 'No se pudo leer con OCR ' + (ocr.failed.length === 1 ? 'la página ' : 'las páginas ') + U.listJoin(ocr.failed.map(String)) + (ocr.error ? ' (' + ocr.error + ')' : '') + '. El resto del documento sí se leyó. Si faltan cifras, vuelve a cargar el PDF o divídelo en partes más pequeñas.' });
       if (ocr.ok && ocr.pages > 0) src.notes.push({ level: 'info', text: 'Se leyeron ' + ocr.pages + ' página(s) escaneada(s) con reconocimiento de texto (OCR) en tu equipo' + (ocr.tables ? ': ' + ocr.tables + ' tabla(s)' : ', sin tablas reconocibles') + (imagePages.some((x) => x.ocrLayer) ? ' (el PDF traía una capa de texto de otro OCR; se usó la lectura de Vértice, que se verifica con las cuadraturas)' : '') + '. Revisa la lectura en el paso 2; en los balances, Vértice corrige los montos mal leídos con las cuadraturas del propio balance.' });
       else if (!ocr.ok) src.notes.push({ level: 'warn', text: 'El PDF está escaneado y no se pudo leer con OCR en esta vista (' + ocr.error + '). ' + (V.AI && V.AI.available && V.AI.available() ? 'Usa "Extraer con IA" o la app instalable.' : 'Prueba con la app instalable, o pide el archivo original en Excel o PDF con texto.') });
+    }
+    // cuántas páginas se leyeron (para que se vea que el documento se recorrió completo)
+    const okPages = maxPages - failedPages.length;
+    if (doc.numPages > maxPages) src.notes.push({ level: 'warn', text: 'El PDF tiene ' + doc.numPages + ' páginas: se leyeron las primeras ' + maxPages + '. Si los estados están más adelante, carga solo esas páginas.' });
+    if (failedPages.length) src.notes.push({ level: 'warn', text: 'No se pudo leer ' + (failedPages.length === 1 ? 'la página ' : 'las páginas ') + U.listJoin(failedPages.map(String)) + ' (página dañada o con un formato no reconocido); el resto sí se leyó.' });
+    if (doc.numPages > 1) src.notes.push({ level: 'info', text: (okPages === doc.numPages ? 'Se recorrieron las ' + doc.numPages + ' páginas del PDF' : 'Se recorrieron ' + okPages + ' de ' + doc.numPages + ' páginas') + ': ' + src.tables.length + ' tabla(s) encontradas.' });
+    try {
+      // libera la memoria del documento (el archivo original queda guardado para la extracción con IA)
+      await doc.destroy();
+    } catch (e) {
+      /* nada */
     }
     if (textChars < 20 && !imagePages.length) {
       src.notes.push({ level: 'warn', text: 'El PDF no tiene texto seleccionable. Puedes extraer sus tablas con IA desde claude.ai o pedir el archivo original en Excel.' });
@@ -2314,28 +2365,135 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     if (!V.OCR || L.ocrDisabled) return { ok: false, error: 'OCR no disponible' };
     let tables = 0;
     let done = 0;
+    const failed = [];
+    let lastErr = null;
     try {
       progress('Preparando el lector de texto (OCR)… la primera vez descarga ~6 MB');
       await V.OCR.worker();
-      for (const pg of pages) {
-        const p = pg.p;
+    } catch (e) {
+      console.error(e);
+      return { ok: false, pages: 0, tables: 0, failed: [], error: (e && e.message) || String(e) };
+    }
+    for (let i = 0; i < pages.length; i++) {
+      const pg = pages[i];
+      const p = pg.p;
+      // en documentos largos el lector se reinicia cada 5 páginas para liberar memoria
+      if (i > 0 && i % 5 === 0) await V.OCR.terminate();
+      let page = null;
+      try {
         const label = fileName + ' · página ' + p + ' de ' + doc.numPages;
         progress(label + ': preparando la imagen…');
-        const page = await doc.getPage(p);
-        const img = await L.pageImage(page, pdfjsLib, { imageOnly: pg.chars > 0 && !pg.garbled });
+        page = await withTimeout(doc.getPage(p), 30000, 'la página no se pudo abrir');
+        const img = await withTimeout(L.pageImage(page, pdfjsLib, { imageOnly: pg.chars > 0 && !pg.garbled }), 90000, 'la imagen de la página no se pudo preparar');
         if (!img) continue;
         const before = src.tables.length;
         const n = await L.ocrImage(img, src, label, p);
         // el texto ilegible de esa página se reemplaza por la lectura OCR
-        if (n && pg.garbled) src.tables = src.tables.filter((t, i) => i >= before || !(t.meta && t.meta.page === p && t.meta.origin === 'pdf'));
+        if (n && pg.garbled) src.tables = src.tables.filter((t, k) => k >= before || !(t.meta && t.meta.page === p && t.meta.origin === 'pdf'));
         tables += n;
         done++;
+      } catch (e) {
+        // una página que falla (sin memoria, lector colgado) no detiene las demás: se anota y se reinicia el lector
+        console.error('OCR página ' + p, e);
+        lastErr = e;
+        failed.push(p);
+        await V.OCR.terminate();
+      } finally {
+        try {
+          if (page) page.cleanup();
+        } catch (e) {
+          /* nada */
+        }
       }
-      return { ok: true, pages: done, tables };
-    } catch (e) {
-      console.error(e);
-      return { ok: done > 0, pages: done, tables, error: (e && e.message) || String(e) };
     }
+    return { ok: done > 0 || !failed.length, pages: done, tables, failed, error: lastErr ? (lastErr.message || String(lastErr)) : null };
+  };
+
+  /* formularios 29 de una carpeta tributaria (SII): período "[15] 202606" y pares código–valor
+     ("020 EXPORTACIONES DEL MES | 21.904.630", "563 BASE IMPONIBLE | 74.882.762") → una fila por mes */
+  L.f29FromPages = function (pageTables, texts) {
+    const byPage = new Map();
+    pageTables.forEach((t) => {
+      if (!byPage.has(t.page)) byPage.set(t.page, []);
+      byPage.get(t.page).push(t);
+    });
+    const textOf = (p) => {
+      const x = (texts || []).find((tx) => tx.where === 'Página ' + p);
+      return x ? x.text : '';
+    };
+    const numCL = (txt) => {
+      const neg = /^\(.*\)$/.test(txt) || /^-/.test(txt);
+      const v = parseFloat(txt.replace(/[()\-\s$]/g, '').replace(/\./g, '').replace(',', '.'));
+      return isFinite(v) ? (neg ? -v : v) : null;
+    };
+    const months = new Map();
+    const drop = new Set();
+    let f22 = false;
+    let f22Start = null;
+    let firstF29 = null;
+    byPage.forEach((tabs, p) => {
+      const rows = [];
+      tabs.forEach((t) => t.grid.forEach((r) => rows.push(r.map((v) => (v === null || v === undefined ? '' : String(v).trim())))));
+      const flat = rows.map((r) => r.filter(Boolean).join(' | ')).join('\n');
+      const all = U.norm(textOf(p) + ' ' + tabs.map((t) => (t.notes || []).join(' ') + ' ' + (t.title || '')).join(' ') + ' ' + flat);
+      // página del formulario 22 (renta anual): su estructura de códigos no es una tabla de datos
+      if (/form\.?\s*22\b|formulario 22/.test(all) && /ano tributario|impuestos anuales a la renta/.test(all)) {
+        f22 = true;
+        if (f22Start === null || p < f22Start) f22Start = p;
+        drop.add(p);
+        return;
+      }
+      if (!/formulario 29|declaracion mensual y pago/.test(all)) return;
+      const pm = flat.match(/\[15\]\s*((?:19|20)\d{2})(0[1-9]|1[0-2])\b/) || flat.match(/PERIODO\D{0,20}((?:19|20)\d{2})(0[1-9]|1[0-2])\b/i);
+      if (!pm) return;
+      const codes = {};
+      const isNum = (x) => /^\(?-?\d{1,3}(\.\d{3})*(,\d+)?\)?$|^\(?-?\d+\)?$/.test(x);
+      rows.forEach((cs) => {
+        for (let i = 0; i < cs.length; i++) {
+          const m = cs[i].match(/^(\d{2,4})(?:\s+(\D.*))?$/);
+          if (!m) continue;
+          let j = i + 1;
+          while (j < cs.length && !cs[j]) j++;
+          // la glosa puede venir en su propia celda (y celdas vacías entre la glosa y el valor)
+          if (j < cs.length && !isNum(cs[j]) && !/^\d{2,4}(\s|$)/.test(cs[j])) {
+            j++;
+            while (j < cs.length && !cs[j]) j++;
+          }
+          if (j < cs.length && isNum(cs[j])) {
+            const v = numCL(cs[j]);
+            if (v !== null) codes[String(+m[1])] = v;
+            i = j;
+          }
+        }
+      });
+      const known = ['20', '502', '538', '537', '563', '62', '89', '547', '77', '504', '520', '142'].filter((k) => codes[k] !== undefined).length;
+      if (known < 3) return;
+      // fecha de presentación: si hay más de un formulario del mismo período (rectificatoria), queda el más reciente
+      let pres = 0;
+      (flat.match(/\b(\d{2})\/(\d{2})\/((?:19|20)\d{2})\b/g) || []).forEach((d) => {
+        const [dd, mm, yy] = d.split('/').map(Number);
+        pres = Math.max(pres, U.dayFromYMD(yy, mm, dd));
+      });
+      const key = pm[1] + '-' + pm[2];
+      const prev = months.get(key);
+      if (!prev || pres >= prev.pres) months.set(key, { codes, pres, page: p });
+      drop.add(p);
+      if (firstF29 === null || p < firstF29) firstF29 = p;
+    });
+    // las páginas que siguen a un formulario 22 (su segunda y tercera hoja) también son del formulario 22
+    if (f22Start !== null && months.size) byPage.forEach((_, p) => p > f22Start && drop.add(p));
+    if (!months.size) return f22 ? { rows: [], drop, f22 } : null;
+    const keys = Array.from(months.keys()).sort();
+    const val = (c, k) => (c[k] !== undefined ? c[k] : null);
+    const rows = keys.map((k) => {
+      const c = months.get(k).codes;
+      // ventas del mes: base imponible del PPM (ingresos brutos); si no está, desde los débitos de IVA
+      let total = val(c, '563');
+      if (total === null && (c['502'] !== undefined || c['20'] !== undefined)) total = Math.round(((c['502'] || 0) - (c['510'] || 0) + (c['111'] || 0)) / 0.19) + (c['20'] || 0) + (c['142'] || 0);
+      return [k, total, c['20'] || 0, val(c, '538'), val(c, '537'), val(c, '62'), val(c, '547')];
+    });
+    const lab = (k) => U.MONTHS_SHORT[+k.slice(5) - 1] + ' ' + k.slice(0, 4);
+    return { head: ['Periodo', 'Ventas totales SII', 'Exportaciones', 'IVA debito fiscal', 'IVA credito fiscal', 'PPM', 'Impuesto determinado'], rows, drop, f22, fromLabel: lab(keys[0]), toLabel: lab(keys[keys.length - 1]) };
   };
 
   /* reconstruye tablas desde las posiciones del texto de una página */
@@ -3409,7 +3567,15 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       id.data[j + 3] = 255;
     }
     ctx.putImageData(id, 0, 0);
-    const { data } = await w.recognize(c, {}, { blocks: true });
+    // si el lector se queda sin memoria o se cuelga, la promesa no termina nunca: se corta a los 2 minutos
+    let tm = null;
+    const limit = new Promise((_, rej) => (tm = setTimeout(() => rej(new Error('el lector de texto tardó demasiado en esta página')), 120000)));
+    let data;
+    try {
+      ({ data } = await Promise.race([w.recognize(c, {}, { blocks: true }), limit]));
+    } finally {
+      clearTimeout(tm);
+    }
     const words = [];
     for (const b of data.blocks || []) for (const p of b.paragraphs) for (const l of p.lines) for (const wd of l.words) words.push({ t: wd.text, x0: wd.bbox.x0, y0: wd.bbox.y0, x1: wd.bbox.x1, y1: wd.bbox.y1, c: wd.confidence });
     return words;
@@ -3421,14 +3587,16 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   };
   OCR.terminate = async function () {
     if (!workerP) return;
+    const wp = workerP;
+    workerP = null;
+    lastParams = '';
     try {
-      const w = await workerP;
-      await w.terminate();
+      const w = await Promise.race([wp, new Promise((r) => setTimeout(() => r(null), 3000))]);
+      // un lector colgado puede no responder a terminate(): no se espera más de 3 segundos
+      if (w) await Promise.race([w.terminate(), new Promise((r) => setTimeout(r, 3000))]);
     } catch (e) {
       /* nada */
     }
-    workerP = null;
-    lastParams = '';
   };
 })(typeof globalThis !== 'undefined' ? (globalThis.V = globalThis.V || {}) : (window.V = window.V || {}));
 
@@ -9529,7 +9697,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         benchSource: V.I.BENCH_SOURCE,
         benchNote: V.I.BENCH_NOTE,
         sources: ctx.sources || [],
-        range: BKA ? 'estados financieros de un banco, ' + BKA.last + (BKA.prevInc ? ' y ' + BKA.prevInc : '') : model.meta.fromStatements && FIN ? 'estados financieros ' + (FIN.periods.length > 1 ? FIN.periods[0] + ' a ' + FIN.last : FIN.last) + (FIN.fromLedger ? ' (balance de 8 columnas)' : '') : model.meta.minDay !== null ? U.fmtDate(model.meta.minDay) + ' al ' + U.fmtDate(model.meta.maxDay) : '',
+        range: BKA ? 'estados financieros de un banco, ' + BKA.last + (BKA.prevInc ? ' y ' + BKA.prevInc : '') : model.meta.fromStatements && FIN ? 'estados financieros ' + (FIN.periods.length > 1 ? FIN.periods[0] + ' a ' + FIN.last : FIN.last) + (FIN.fromLedger ? ' (balance de 8 columnas)' : '') : model.meta.minDay !== null ? (model.meta.salesGrain === 'month' || model.meta.hasF29 ? U.monthLabel(U.monthKey(model.meta.minDay)) + ' a ' + U.monthLabel(U.monthKey(model.meta.maxDay)) + (model.meta.hasF29 ? ' (formularios 29 del SII)' : '') : U.fmtDate(model.meta.minDay) + ' al ' + U.fmtDate(model.meta.maxDay)) : '',
         demo: !!ctx.demo,
       },
     };
@@ -15655,6 +15823,11 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         }
       }
     }
+    // carpeta tributaria del SII: el nombre y la actividad vienen en su portada
+    if (!lg || !lg.company) {
+      const sc = app.sources.find((x) => x.company && x.company.name);
+      if (sc) lg = Object.assign({}, lg || {}, { company: sc.company.name, rut: sc.company.rut || null, giro: sc.company.giro || (lg && lg.giro) || null });
+    }
     const bank = !!(app.model.meta && app.model.meta.bank);
     const key = (x) => U.norm(x || '').replace(/[^a-z0-9]/g, '');
     let changed = false;
@@ -16020,7 +16193,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       savedAt: new Date().toISOString(),
       settings: app.settings,
       demo: app.demo,
-      sources: app.sources.map((s) => ({ name: s.name, kind: s.kind, size: s.size, texts: s.texts, notes: s.notes, tables: s.tables })),
+      sources: app.sources.map((s) => ({ name: s.name, kind: s.kind, size: s.size, texts: s.texts, notes: s.notes, tables: s.tables, company: s.company || null })),
       tableConfigs: app.tables.map((t) => ({ source: t.sourceName, name: t.name, type: t.type, mapping: t.mapping, enabled: t.enabled, user: !!t.userType, userMap: !!t.userMap })),
       ai: app.ai.report,
       aiPrices: app.ai.prices,
@@ -16032,7 +16205,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     app.settings.fixes = Object.assign({}, V.M.DEFAULT_FIXES, (obj.settings && obj.settings.fixes) || {});
     app.settings.overrides = (obj.settings && obj.settings.overrides) || { expenses: {} };
     app.demo = !!obj.demo;
-    (obj.sources || []).forEach((s) => addSource({ id: U.uid('src'), name: s.name, kind: s.kind, size: s.size || 0, texts: s.texts || [], notes: s.notes || [], tables: s.tables || [], blobs: [] }));
+    (obj.sources || []).forEach((s) => addSource({ id: U.uid('src'), name: s.name, kind: s.kind, size: s.size || 0, texts: s.texts || [], notes: s.notes || [], tables: s.tables || [], company: s.company || null, blobs: [] }));
     // desde la versión 2 solo se restaura lo que eligió el usuario: el resto lo decide el lector actual, que puede haber
     // mejorado. Las sesiones antiguas no lo distinguen: se respetan, salvo una tabla que antes quedó como "otro" y que
     // ahora se reconoce como estados financieros o balance.

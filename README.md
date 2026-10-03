@@ -1,8 +1,23 @@
-# Vértice Gerencial · versión 2.2
+# Vértice Gerencial · versión 2.2.1
 
 Reportes para la toma de decisiones a partir de los archivos que entrega la empresa (Excel, CSV, PDF con texto o escaneado, imágenes, Word, PowerPoint, exportes de Power BI, JSON, XML, HTML o una tabla pegada). El informe se arma con el **Principio de la Pirámide** (Barbara Minto): primero la conclusión y la decisión que se pide, después cuatro argumentos MECE con su evidencia.
 
-## Qué hay de nuevo en la 2.2
+## Qué hay de nuevo en la 2.2.1
+
+**Documentos largos**
+
+- Recorre los PDF de hasta **300 páginas** y muestra el avance página por página ("página 12 de 44").
+- En cada archivo indica cuántas páginas se leyeron ("Se recorrieron las 44 páginas del PDF"). Si una página está dañada o el lector de texto se queda sin memoria, la salta, avisa cuál fue y **sigue con el resto**; antes una página así podía dejar la lectura detenida.
+- Libera la memoria de cada página al terminarla y reinicia el lector de PDF escaneados cada 5 páginas, para que los documentos largos no se traben.
+- Una tabla que continúa en varias páginas se llama "Páginas 3–8".
+
+**Carpeta tributaria del SII**
+
+- Lee los **formularios 29** de la carpeta tributaria (uno por página) y los junta en una tabla de **ventas mensuales declaradas al SII**: base imponible, exportaciones, IVA débito y crédito, y PPM. Si hay una rectificatoria, usa la más reciente.
+- Toma el nombre y la actividad del contribuyente desde la portada y sugiere la industria.
+- Si también cargas los balances, compara las ventas contables con lo declarado al SII. Las páginas del formulario 22 quedan como contexto.
+
+## Lo que trajo la 2.2
 
 **Bancos (formato de la CMF)**
 
