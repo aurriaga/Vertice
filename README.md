@@ -1,8 +1,23 @@
-# Vértice Gerencial · versión 2.1
+# Vértice Gerencial · versión 2.2
 
 Reportes para la toma de decisiones a partir de los archivos que entrega la empresa (Excel, CSV, PDF con texto o escaneado, imágenes, Word, PowerPoint, exportes de Power BI, JSON, XML, HTML o una tabla pegada). El informe se arma con el **Principio de la Pirámide** (Barbara Minto): primero la conclusión y la decisión que se pide, después cuatro argumentos MECE con su evidencia.
 
-## Qué hay de nuevo en la 2.1
+## Qué hay de nuevo en la 2.2
+
+**Bancos (formato de la CMF)**
+
+- Lee los **estados financieros de bancos** chilenos, mensuales e intermedios (formato del Compendio de Normas Contables de la CMF): estado de situación financiera, estado del resultado y sus notas al pie, como las colocaciones netas y las provisiones adicionales.
+- Calcula los indicadores de la banca: rentabilidad sobre patrimonio y sobre activos (anualizadas), eficiencia, margen de intereses y reajustes, peso de las comisiones, costo de riesgo (con y sin provisiones adicionales), patrimonio sobre activos, activos líquidos y colocaciones sobre depósitos, y los compara con el sistema bancario (CMF, agosto de 2026).
+- Arma el informe con pilares propios de un banco (ingresos y márgenes, eficiencia y gastos, riesgo de crédito, y solvencia, liquidez y rentabilidad), el **Informe del analista**, los riesgos y las prioridades. Las descargas en PDF, PowerPoint y Excel traen los estados y los indicadores del banco.
+- Pone solo el **nombre del banco** y la industria **Bancos e instituciones financieras**. Si cargas archivos de otra empresa, el perfil cambia solo, salvo que hayas escrito el nombre a mano.
+
+**Lectura**
+
+- Encabezados en dos líneas ("Al 30 de junio de" / "2026") y títulos de grupo sobre varias columnas ("Por los períodos de seis meses terminados al…"), típicos de los estados intermedios.
+- Nombres de empresa bien escritos ("Banco de Chile S.A.", "Comercial Los Aromos Ltda.").
+- Al retomar un análisis guardado, las tablas se vuelven a leer con el lector nuevo; se respetan solo los cambios que hiciste a mano.
+
+## Lo que trajo la 2.1
 
 **Lectura**
 
@@ -45,7 +60,7 @@ Los archivos se procesan en el navegador y no se suben a ningún servidor. En cl
 ## Actualizar tu app en GitHub Pages (si ya la tienes publicada)
 
 1. Entra a tu repositorio (por ejemplo `github.com/TU-USUARIO/vertice`).
-2. Usa **Add file → Upload files** y arrastra **todo el contenido** de esta carpeta: `index.html`, `sw.js`, `manifest.webmanifest`, `.nojekyll` y las carpetas `vendor`, `fonts` e `icons` (la carpeta `vendor` ahora trae la subcarpeta `tesseract`, que es el lector de PDF escaneados). Los archivos con el mismo nombre se reemplazan.
+2. Usa **Add file → Upload files** y arrastra `index.html`, `sw.js` y `README.md`. Desde la 2.1 solo cambian esos archivos; si vienes de una versión anterior a la 2.1, sube **todo el contenido** de esta carpeta (`index.html`, `sw.js`, `manifest.webmanifest`, `.nojekyll` y las carpetas `vendor`, `fonts` e `icons`). Los archivos con el mismo nombre se reemplazan.
 3. Presiona **Commit changes** y espera uno o dos minutos.
 4. Abre la app con conexión: toma la versión nueva sola. Si todavía ves la anterior, ciérrala y ábrela de nuevo (en el navegador, Ctrl + F5).
 

@@ -738,7 +738,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="busy" id="busy" hidden><div class="box"><b id="busy-text">Procesando…</b><div class="progress"><i></i></div></div></div>
 
-<script>window.V = window.V || {}; V.CONFIG = {"libBase":"vendor/","pwa":true,"version":"2.1.0"};</script>
+<script>window.V = window.V || {}; V.CONFIG = {"libBase":"vendor/","pwa":true,"version":"2.2.0"};</script>
 <script>
 /* ==== 01_util.js ==== */
 /* Vértice · utilidades: formato es-CL, fechas como número de día UTC, estadística, texto */
@@ -867,6 +867,21 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     return String(s)
       .toLowerCase()
       .replace(/(^|[\s\-/(])([a-záéíóúñü])/g, (m, a, b) => a + b.toUpperCase());
+  };
+  /* nombre de empresa: "BANCO DE CHILE S.A." → "Banco de Chile S.A."; "COMERCIAL ANDES SPA" → "Comercial Andes SpA" */
+  // preposiciones y conjunciones van en minúscula; los artículos de un nombre propio ("Los Aromos") no
+  const SMALL_WORDS = new Set(['de', 'del', 'y', 'e', 'en', 'para', 'por', 'con', 'a', 'al']);
+  U.companyCase = function (s) {
+    return U.titleCase(String(s || '').trim())
+      .replace(/(\s)([a-záéíóúñü]+)(?=\s|$)/gi, (m, sp, w) => (SMALL_WORDS.has(w.toLowerCase()) ? sp + w.toLowerCase() : m))
+      .replace(/(^|\s)((?:[a-záéíóúñ]\.){2,}[a-záéíóúñ]?\.?)(?=\s|$)/gi, (m, sp, w) => sp + w.toUpperCase())
+      .replace(/\bSpa\b/g, 'SpA')
+      .replace(/\bS\.a\.c\.?(?=\s|$)/gi, 'S.A.C.')
+      .replace(/\bS\.a\.?(?=\s|$)/gi, 'S.A.')
+      .replace(/\bS\.p\.a\.?(?=\s|$)/gi, 'S.p.A.')
+      .replace(/\bLtda\b\.?/gi, 'Ltda.')
+      .replace(/\bEirl\b/gi, 'EIRL')
+      .replace(/\bSrl\b/gi, 'SRL');
   };
   /* similitud entre nombres (0..1): Dice de tokens + trigramas, con penalización si los números no coinciden */
   U.similarity = function (a, b, synonyms) {
@@ -1435,6 +1450,14 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       season: 'Presupuestos de marketing se concentran en el segundo semestre (CyberDay, Black Friday, Navidad).',
       levers: ['Concentración de clientes', 'Margen por cuenta', 'Plazo de cobro'],
       kpis: ['Margen por cliente', 'DSO', 'Ingreso por empleado'],
+    },
+    {
+      // los bancos se analizan con sus propios indicadores (módulo de bancos) y la referencia del sistema bancario de la CMF
+      id: 'banca', name: 'Bancos e instituciones financieras', bench: 'Total Market (without financials)',
+      cr: [1.0, 1.5], inv: { over: 60, lead: 7, dead: 60 }, conc: 0.2,
+      season: 'Los resultados de un banco siguen a las tasas de interés, la inflación (reajustes en UF) y el ciclo del crédito más que al calendario comercial.',
+      levers: ['Margen de intereses y reajustes', 'Comisiones', 'Eficiencia', 'Costo de riesgo', 'Costo de fondos'],
+      kpis: ['Rentabilidad sobre patrimonio (ROAE)', 'Eficiencia', 'Costo de riesgo', 'Morosidad de 90 días', 'Índice de adecuación de capital'],
     },
     {
       id: 'otra', name: 'Otra industria (promedio general)', bench: 'Total Market (without financials)',
@@ -2087,7 +2110,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (chars >= 40 && !garbled) scan = await L.pageScanInfo(page, pdfjsLib).catch(() => null);
       if (chars < 40 || garbled || (scan && scan.cover >= 0.3 && scan.invisible)) imagePages.push({ p, chars, garbled: garbled || !!(scan && scan.invisible), ocrLayer: !!(scan && scan.invisible) });
       const res = L.pdfItemsToTables(items);
-      res.tables.forEach((t, i) => pageTables.push({ page: p, idx: i, grid: t.grid, title: t.title }));
+      res.tables.forEach((t, i) => pageTables.push({ page: p, idx: i, grid: t.grid, title: t.title, notes: t.notes || [] }));
       if (res.text) src.texts.push({ where: 'Página ' + p, text: res.text.slice(0, 6000) });
     }
     // una tabla sin fila de encabezado que sigue a otra con las mismas columnas (el balance partido en
@@ -2111,12 +2134,13 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (prev && prev.page === t.page - 1 && prev.lastOnPage && sameHeader(headerRowOf(prev.grid), header) && !t.title) {
         const bodyStart = t.grid.indexOf(header) + 1;
         prev.grid = prev.grid.concat(t.grid.slice(bodyStart));
+        prev.notes = (prev.notes || []).concat(t.notes || []);
         prev.page = t.page;
         continue;
       }
       merged.push(Object.assign({ lastOnPage: true }, t));
     }
-    merged.forEach((t) => src.tables.push({ name: 'Página ' + t.page + (t.idx ? ' · tabla ' + (t.idx + 1) : ''), grid: trimGrid(t.grid), meta: { page: t.page, origin: 'pdf', title: t.title } }));
+    merged.forEach((t) => src.tables.push({ name: 'Página ' + t.page + (t.idx ? ' · tabla ' + (t.idx + 1) : ''), grid: trimGrid(t.grid), meta: { page: t.page, origin: 'pdf', title: t.title, notes: t.notes || [] } }));
     // páginas escaneadas: reconocimiento de texto (OCR) en el propio equipo
     if (imagePages.length) {
       const ocr = await L.ocrPages(doc, imagePages, src, file.name, window.pdfjsLib);
@@ -2366,7 +2390,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           let m = k;
           while (m < lines.length && !multi(m)) {
             const c0 = lines[m].cells[0];
-            if (m - k >= 3 || !c0 || c0.s.length > 70 || /^(nota|notas|las notas|observaci|total general)/i.test(c0.s)) return false;
+            // un nombre largo partido en dos líneas: la línea siguiente empieza con minúscula
+            const wraps = m + 1 < lines.length && lines[m + 1].cells[0] && /^[a-záéíóúñ]/.test(lines[m + 1].cells[0].s);
+            if (m - k >= 3 || !c0 || (c0.s.length > 70 && !(wraps && c0.s.length <= 160)) || /^(\(\*|nota|notas|las notas|observaci|total general)/i.test(c0.s)) return false;
             if (m + 1 < lines.length && lines[m].y - lines[m + 1].y >= hMed * 3.2) return false;
             m++;
           }
@@ -2381,42 +2407,106 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
             if (lines[k].cells.length === 1 && lines[k].y - (k + 1 < lines.length ? lines[k + 1].y : 0) < hMed * 4) titles.unshift(lines[k].cells[0].s);
             else break;
           }
-          const grid = regionToGrid(region);
-          tables.push({ grid: titles.map((t) => [t]).concat(grid), title: titles[titles.length - 1] || '' });
+          const grid = L.joinWrapped(regionToGrid(region));
+          tables.push({ grid: titles.map((t) => [t]).concat(grid), title: titles[titles.length - 1] || '', notes: [] });
           // una línea final de total con 2+ celdas ya está incluida; notas debajo van al texto
           i = j + 1;
           continue;
         }
       }
-      textLines.push(lines[i].cells.map((c) => c.s).join(' '));
+      const txt = lines[i].cells.map((c) => c.s).join(' ');
+      textLines.push(txt);
+      // notas al pie bajo la última tabla ("(*) Incluye créditos … por $39.364.572 millones", "Al 31 de agosto … provisiones
+      // adicionales …"): quedan asociadas a esa tabla para que el análisis las pueda leer
+      const lastT = tables[tables.length - 1];
+      if (lastT && lastT.notes.length < 8 && txt.length >= 12) {
+        const tl = lastT.notes.length ? lastT.notes[lastT.notes.length - 1] : null;
+        // una línea que continúa la nota anterior (empieza en minúscula) se une a ella
+        if (tl !== null && /^[a-záéíóúñ$(0-9]/.test(txt) && !/^\(\*/.test(txt)) lastT.notes[lastT.notes.length - 1] = tl + ' ' + txt;
+        else lastT.notes.push(txt);
+      }
       i++;
     }
     return { tables, text: textLines.join('\n') };
   };
-  function regionToGrid(region) {
-    // bandas de columnas por unión de intervalos x
-    const spans = [];
-    region.forEach((ln) => ln.cells.forEach((c) => spans.push([c.x0, c.x1])));
-    spans.sort((a, b) => a[0] - b[0]);
-    const bands = [];
-    for (const s of spans) {
-      const last = bands[bands.length - 1];
-      if (last && s[0] <= last[1] + 1) last[1] = Math.max(last[1], s[1]);
-      else bands.push([s[0], s[1]]);
+  /* nombres de partida partidos en dos líneas ("Activos financieros … con cambios en" / "resultados  3.120.400"):
+     la línea que sigue empieza con minúscula y completa el nombre; se unen en una sola fila */
+  L.joinWrapped = function (grid) {
+    const filled = (r) => r.slice(1).some((v) => v !== null && v !== '');
+    const first = (r) => (r[0] === null || r[0] === undefined ? '' : String(r[0]).trim());
+    const cont = (s) => /^[a-záéíóúñü(]/.test(s) && !/^(y|o)\s*$/.test(s);
+    const out = [];
+    for (let i = 0; i < grid.length; i++) {
+      const r = grid[i].slice();
+      const prev = out[out.length - 1];
+      const s = first(r);
+      if (prev && s && cont(s) && first(prev) && !/[.:]$/.test(first(prev))) {
+        // la fila anterior solo tenía el comienzo del nombre: los montos vienen en esta
+        if (!filled(prev) && filled(r)) {
+          r[0] = first(prev) + ' ' + s;
+          out[out.length - 1] = r;
+          continue;
+        }
+        // los montos venían en la fila anterior y esta solo completa el nombre, o el nombre ocupa tres líneas
+        if (!filled(r)) {
+          prev[0] = first(prev) + ' ' + s;
+          continue;
+        }
+      }
+      out.push(r);
     }
-    // si hay demasiadas bandas por ruido, se mantiene igual: cada celda cae en una banda
+    return out;
+  };
+  function regionToGrid(region) {
+    const union = (spans) => {
+      spans.sort((a, b) => a[0] - b[0]);
+      const out = [];
+      for (const sp of spans) {
+        const last = out[out.length - 1];
+        if (last && sp[0] <= last[1] + 1) last[1] = Math.max(last[1], sp[1]);
+        else out.push([sp[0], sp[1]]);
+      }
+      return out;
+    };
+    const ovOf = (b, c) => Math.min(b[1], c.x1) - Math.max(b[0], c.x0);
+    // bandas de columnas: salen de las filas con montos. Un título de grupo ancho ("Por los períodos de tres meses
+    // terminados al …", centrado sobre dos columnas) no debe fundir las columnas que tiene debajo.
+    const isAmt = (txt) => /^\(?[-−]?\$?\d[\d.,]*\)?%?$/.test(String(txt).replace(/\s+/g, ''));
+    const dataLines = region.filter((ln) => ln.cells.length >= 2 && ln.cells.slice(1).filter((c) => isAmt(c.s)).length >= Math.max(1, (ln.cells.length - 1) * 0.6));
+    let bands;
+    if (dataLines.length >= 2) {
+      bands = union(dataLines.reduce((a, ln) => a.concat(ln.cells.map((c) => [c.x0, c.x1])), []));
+      // celdas de las otras filas que no tocan ninguna banda (p. ej. "Nota" sin números debajo): bandas propias
+      const extra = [];
+      region.forEach((ln) => {
+        if (dataLines.includes(ln)) return;
+        ln.cells.forEach((c) => {
+          if (!bands.some((b) => ovOf(b, c) > 0)) extra.push([c.x0, c.x1]);
+        });
+      });
+      if (extra.length) bands = bands.concat(union(extra)).sort((a, b) => a[0] - b[0]);
+    } else {
+      const spans = [];
+      region.forEach((ln) => ln.cells.forEach((c) => spans.push([c.x0, c.x1])));
+      bands = union(spans);
+    }
     return region.map((ln) => {
       const row = new Array(bands.length).fill(null);
       ln.cells.forEach((c) => {
+        // una celda que cubre por completo dos o más columnas es un título de grupo: va a la primera
+        const full = bands.map((b, k) => [k, ovOf(b, c) >= (b[1] - b[0]) * 0.8 && b[1] - b[0] > 0]).filter((x) => x[1]);
         let bi = 0;
-        let bestOv = -Infinity;
-        bands.forEach((b, k) => {
-          const ov = Math.min(b[1], c.x1) - Math.max(b[0], c.x0);
-          if (ov > bestOv) {
-            bestOv = ov;
-            bi = k;
-          }
-        });
+        if (full.length >= 2) bi = full[0][0];
+        else {
+          let bestOv = -Infinity;
+          bands.forEach((b, k) => {
+            const ov = ovOf(b, c);
+            if (ov > bestOv) {
+              bestOv = ov;
+              bi = k;
+            }
+          });
+        }
         row[bi] = row[bi] ? row[bi] + ' ' + c.s : c.s;
       });
       return row;
@@ -3525,6 +3615,19 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const y = +yM[0];
     const monthEnd = (mo) => U.monthEnd(U.monthKeyYM(y, mo));
     const range = (a, b) => ({ from: U.dayFromYMD(y, a, 1), to: monthEnd(b), months: b - a + 1, y, m0: a, m1: b, kind: 'range', key: U.monthKeyYM(y, b) });
+    // fecha escrita: "al 30 de junio de 2026"; con "tres meses terminados al …" es un período de N meses que termina ese día
+    const NUMW = { un: 1, uno: 1, dos: 2, tres: 3, cuatro: 4, cinco: 5, seis: 6, siete: 7, ocho: 8, nueve: 9, diez: 10, once: 11, doce: 12 };
+    if ((m = t.match(/\b(\d{1,2})\s+de\s+([a-z]{3,10})\.?\s+(?:de(?:l)?\s+)?((?:19|20)\d{2})\b/))) {
+      const mo = monOf(m[2]);
+      if (mo) {
+        const yy = +m[3];
+        const to = U.dayFromYMD(yy, mo, Math.min(+m[1], 31));
+        const nm = t.match(/\b(\d{1,2}|un|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce)\s+mes(?:es)?\b/);
+        const n = nm ? (/^\d/.test(nm[1]) ? +nm[1] : NUMW[nm[1]]) : null;
+        if (n && n >= 1 && n <= 12 && n <= mo) return { from: U.dayFromYMD(yy, mo - n + 1, 1), to, months: n, y: yy, m0: mo - n + 1, m1: mo, kind: 'range', key: U.monthKeyYM(yy, mo) };
+        return { to, from: null, months: null, y: yy, m1: mo, kind: 'date', key: U.monthKeyYM(yy, mo) };
+      }
+    }
     // rango de meses: "ene-abr", "enero a abril", "ene–mar"
     if ((m = t.match(/\b([a-z]{3,10})\.?\s*(?:-|–|—|a|al|hasta)\s*([a-z]{3,10})\b/))) {
       const a = monOf(m[1]);
@@ -3733,8 +3836,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const texty = kinds.filter((k) => k === 'text' || k === 'year').length;
       const dates = kinds.filter((k) => k === 'date').length;
       const nums = kinds.filter((k) => k === 'num').length;
-      // una fila con dos o más montos y casi sin texto es una fila de datos, no el encabezado
-      if (nums >= 2 && nums > texty) continue;
+      // una fila con montos y casi sin texto ("Efectivo … | 2.763.821") es una fila de datos, no el encabezado
+      if (nums >= 1 && nums >= texty) continue;
       // filas de datos debajo
       let below = 0;
       let belowNum = 0;
@@ -3909,11 +4012,14 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     };
     let hr = S.detectHeader(grid);
     if (hr < 0) {
-      // sin encabezado: generar nombres
+      // sin encabezado: generar nombres; las líneas sueltas de arriba (empresa, título, fecha, "MM$") son el título
       const w = Math.max(...grid.map((r) => r.length));
       t.headers = Array.from({ length: w }, (_, i) => 'Columna ' + (i + 1));
-      t.titleLines = [];
-      t.rows = grid.filter((r) => r.some((v) => v !== null && v !== ''));
+      const cellStr = (v) => (typeof v === 'object' && v !== null ? (v.d !== undefined ? U.fmtDate(v.d) : '') : String(v));
+      let ds = grid.findIndex((r) => r && r.filter((v) => v !== null && v !== '').length >= 2);
+      if (ds < 0) ds = 0;
+      t.titleLines = grid.slice(0, ds).map((r) => (r || []).filter((v) => v !== null && v !== '').map(cellStr).join(' ')).filter(Boolean);
+      t.rows = grid.slice(ds).filter((r) => r && r.some((v) => v !== null && v !== ''));
       t.headerRow = -1;
     } else {
       t.headerRow = hr;
@@ -3926,15 +4032,45 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         if (typeof v === 'object' && v.d !== undefined) return U.monthLabel(U.monthKey(v.d));
         return String(v).trim();
       });
-      // encabezado de dos niveles: fila superior combinada
+      // encabezado de varios niveles: filas de grupo arriba ("Por los períodos de tres meses" / "terminados al 30 de
+      // junio de"), sin nada en la columna de etiquetas, sobre años repetidos ("2026 | 2025 | 2026 | 2025")
+      const filled = (v) => v !== null && v !== undefined && v !== '';
+      const cellTxt = (v) => String(typeof v === 'object' ? U.fmtDate(v.d) : v);
+      const groupRows = [];
+      for (let k = hr - 1; k >= 0 && groupRows.length < 3; k--) {
+        const r = grid[k] || [];
+        if (!r.some(filled) || filled(r[0])) break;
+        groupRows.unshift(r);
+      }
       const prev = hr > 0 ? grid[hr - 1] || [] : [];
       const dupCount = headers.length - new Set(headers.filter(Boolean).map(U.norm)).size - headers.filter((x) => !x).length;
-      if (dupCount > 0 && prev.some((v) => v !== null && v !== '')) {
-        let carry = '';
+      const valHeads = headers.filter((h, i) => i > 0 && h && !/^nota/i.test(h));
+      const yearsOnly = valHeads.length >= 2 && valHeads.every((h) => /^(19|20)\d{2}$/.test(h));
+      if ((dupCount > 0 || yearsOnly) && groupRows.length) {
+        const carries = groupRows.map(() => '');
         headers = headers.map((h, i) => {
-          if (prev[i] !== null && prev[i] !== undefined && prev[i] !== '') carry = String(typeof prev[i] === 'object' ? U.fmtDate(prev[i].d) : prev[i]);
+          groupRows.forEach((r, gi) => {
+            if (filled(r[i])) carries[gi] = cellTxt(r[i]);
+          });
+          const carry = carries.filter(Boolean).join(' ');
           return carry && h ? carry + ' ' + h : h || carry;
         });
+      } else if (dupCount > 0 && prev.some(filled)) {
+        let carry = '';
+        headers = headers.map((h, i) => {
+          if (filled(prev[i])) carry = cellTxt(prev[i]);
+          return carry && h ? carry + ' ' + h : h || carry;
+        });
+      }
+      // encabezado en dos líneas: la fila siguiente solo trae años o la unidad bajo las columnas del encabezado
+      // ("Al 30 de junio de" / "2026", "2026" / "MM$")
+      let hSkip = 0;
+      const nx = grid[hr + 1] || [];
+      const nxCells = nx.map((v, i) => [i, v]).filter((x) => filled(x[1]));
+      const unitRe = /^(m{1,2}\$|\$|miles de \$|millones de \$|us\$|usd|clp|uf|miles de pesos|millones de pesos)$/i;
+      if (nxCells.length && nxCells.every(([i, v]) => i > 0 && headers[i] && (typeof v === 'number' ? v >= 1990 && v <= 2100 && Number.isInteger(v) : /^(19|20)\d{2}$/.test(String(v).trim()) || unitRe.test(String(v).trim())))) {
+        nxCells.forEach(([i, v]) => (headers[i] = headers[i] + ' ' + String(v).trim()));
+        hSkip = 1;
       }
       // nombres vacíos o repetidos
       const seen = {};
@@ -3947,7 +4083,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         } else seen[k] = 1;
         return name;
       });
-      t.rows = grid.slice(hr + 1).filter((r) => r && r.some((v) => v !== null && v !== ''));
+      t.rows = grid.slice(hr + 1 + hSkip).filter((r) => r && r.some((v) => v !== null && v !== ''));
     }
     const width = t.headers.length;
     t.rows = t.rows.map((r) => {
@@ -4008,6 +4144,19 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       // un estado financiero tiene muchas partidas distintas y casi no repite etiquetas
       if (keys.size >= 4 && matched / Math.max(1, labels.length) >= 0.3 && uniqLabels / Math.max(1, labels.length) > 0.8) fsHits = keys.size;
       if (fsHits && S.fsKey(t.headers[labelCol] || '')) fsHits++;
+      // bancos (formato CMF): sus partidas no calzan con las de una empresa comercial
+      if (!fsHits && V.BK && V.BK.ruleOf) {
+        const bk = new Set();
+        let bm = 0;
+        labels.forEach((l) => {
+          const r = V.BK.ruleOf(l);
+          if (r) {
+            bk.add(r[0]);
+            bm++;
+          }
+        });
+        if (bk.size >= 5 && bm / Math.max(1, labels.length) >= 0.3 && uniqLabels / Math.max(1, labels.length) > 0.7) fsHits = bk.size;
+      }
     }
     const scores = { ventas: 0, gastos: 0, presupuesto: 0, inventario: 0, competencia: 0, estados: 0, balance8: 0, resumen: 0, otro: 0.5 };
     // formulario 29 (declaraciones mensuales de IVA): ventas afectas, exportaciones, débito y crédito fiscal
@@ -4016,7 +4165,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     // tablas que parecen estados pero no lo son: ratios, conciliaciones, hallazgos, notas
     const numCols = prof.filter((p) => p.kind === 'num' || p.kind === 'pct').length;
     let ratioHits = 0;
-    if (labelCol >= 0) t.rows.forEach((r) => typeof r[labelCol] === 'string' && /(raz[oó]n|ratio|rotaci[oó]n|endeudamiento|liquidez|apalancamiento|\broa\b|\broe\b|prueba [aá]cida|cobertura|d[ií]as de|margen .*%|\(%\)|indicador)/i.test(r[labelCol]) && ratioHits++);
+    if (labelCol >= 0) t.rows.forEach((r) => typeof r[labelCol] === 'string' && /(raz[oó]n(?!able)|ratio|rotaci[oó]n|endeudamiento|liquidez|apalancamiento|\broa\b|\broe\b|prueba [aá]cida|cobertura(?! contable)|d[ií]as de|margen .*%|\(%\)|indicador)/i.test(r[labelCol]) && ratioHits++);
     // balance de 8 columnas (balance tributario): debe, haber, deudor, acreedor, activo, pasivo, pérdida y ganancia
     if (V.ACC && V.ACC.looksLike(t.headers)) scores.balance8 += 8;
     else if (V.ACC && V.ACC.headerInfo(t.headers).n8 >= 3 && /balance (general|tributario|de (8|ocho) columnas|de comprobaci)/.test(ctx)) scores.balance8 += 6;
@@ -5458,6 +5607,16 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const b8Tables = byType('balance8');
     if (b8Tables.length && V.ACC) M.ledgerFromTables(b8Tables, model);
 
+    // ---------- bancos (formato CMF): otra estructura de balance y de resultados ----------
+    if (model.statements && V.BK && V.BK.detect(model.statements)) {
+      const st = model.statements;
+      st.bank = true;
+      st.bankFig = V.BK.figures(st);
+      model.meta.bank = true;
+    }
+    // ---------- solo estados financieros de períodos parciales (ene–jun 2026 vs ene–jun 2025, o bancos) ----------
+    if (!model.sales.length && model.statements && model.statements.periods.length) M.partialStatementSales(model, byType('gastos').length > 0);
+
     // ---------- solo estados financieros: ingresos, costos y gastos anuales como base del reporte ----------
     if (!model.sales.length && model.statements && model.statements.periods.length) {
       const st = model.statements;
@@ -6266,11 +6425,55 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     model.ledger = { docs: Array.from(byP.values()), company: latest.company, rut: latest.rut, giro: latest.giro };
   };
 
+  /* estados financieros sin años completos (ene–jun 2026 vs ene–jun 2025) o de un banco: el reporte compara
+     los acumulados del mismo tramo; cada período queda como un registro de "ventas" a su fecha de cierre
+     (en un banco, los ingresos operacionales) y el análisis usa esos dos períodos fijos */
+  M.partialStatementSales = function (model, hasExpenses) {
+    const st = model.statements;
+    const bank = !!st.bank;
+    const figOf = (p) => (bank ? st.bankFig && st.bankFig[p] : st.fig[p]);
+    const revOf = (f) => (!f ? null : bank ? f.opInc || null : f.rev || null);
+    const incPs = st.periods.filter((p) => revOf(figOf(p)) && st.info[p] && st.info[p].to);
+    if (!incPs.length) return;
+    if (!bank && incPs.some((p) => (st.info[p].months || 12) >= 12)) return; // hay años completos: flujo anual
+    const byTo = incPs.slice().sort((a, b) => st.info[b].to - st.info[a].to);
+    const cur = byTo[0];
+    const ci = st.info[cur];
+    const [cy, cm] = U.ymd(ci.to);
+    const cMonths = ci.months || 12;
+    const prev = byTo.find((p) => {
+      const i = st.info[p];
+      const [y, m] = U.ymd(i.to);
+      return y === cy - 1 && m === cm && (i.months || 12) === cMonths;
+    }) || null;
+    const push = (p) => {
+      const f = figOf(p);
+      const i = st.info[p];
+      const months = i.months || 12;
+      const grain = months >= 12 ? 'year' : 'ytd';
+      const d = i.to;
+      model.sales.push({ d, grain, months, prod: null, sku: null, cat: null, br: null, ch: null, cli: null, ven: null, doc: null, q: null, pr: null, rev: Math.abs(revOf(f)), cost: !bank && f.cogs ? Math.abs(f.cogs) : null, src: 'estados' });
+      if (hasExpenses) return;
+      const lines = bank
+        ? [['Remuneraciones y beneficios a empleados', f.staff], ['Gastos de administración', f.adm], ['Depreciación y amortización', f.depam], ['Otros gastos operacionales', (f.otherOpExp || 0) + (f.impair || 0)]]
+        : [['Gastos de administración y ventas', f.sga], ['Costos de distribución', f.dist], ['Gastos de ventas', f.sgv]];
+      const ls = lines.filter((x) => x[1]);
+      if (!ls.length && !bank && f.opex) ls.push(['Gastos de operación', f.opex]);
+      ls.forEach(([concept, v]) => model.expenses.push({ d, grain, months, concept, account: null, center: null, cat: null, amount: Math.abs(v), doc: null, src: 'estados' }));
+    };
+    push(cur);
+    if (prev) push(prev);
+    const per = (p) => ({ from: st.info[p].from || U.dayFromYMD(U.ymd(st.info[p].to)[0], 1, 1), to: st.info[p].to, label: p });
+    model.meta.fixedPeriods = { cur: per(cur), prev: prev ? per(prev) : null };
+    model.meta.fromStatements = true;
+    issue(model, { dataset: 'ventas', severity: 'medium', title: 'Solo hay estados financieros', detail: bank ? 'Estados financieros de un banco: el reporte usa los ingresos y gastos operacionales acumulados de ' + cur + (prev ? ' comparados con ' + prev : '') + '.' : 'El reporte compara los estados de ' + cur + (prev ? ' con ' + prev : '') + '. Sin el detalle de ventas no hay análisis por producto, sucursal, fecha ni estacionalidad.', fixText: bank ? 'Para comparar con el sistema bancario, revisa los indicadores de la CMF del mismo mes.' : 'Agrega el detalle de ventas (fecha, producto, sucursal, unidades y monto) para completar el pilar de ingresos.' });
+  };
+
   /* estados financieros: combina todas las tablas en un solo objeto por período.
      Cada columna se asocia a un período por su encabezado ("31.12.2025", "Q1 2026 (ene-mar)", "Ene-Abr 2026");
      el balance a una fecha y el resultado del período que termina esa fecha quedan en el mismo período. */
   M.statementsFromTables = function (tables, model) {
-    const out = { periods: [], items: [], fig: {}, sources: [], info: {} };
+    const out = { periods: [], items: [], fig: {}, sources: [], info: {}, notes: [] };
     const byKey = new Map();
     const INC = new Set(['rev', 'cogs', 'gp', 'sga', 'dist', 'sgv', 'ebit', 'int', 'ebt', 'tax', 'ni', 'dep', 'amort']);
     for (const t of tables) {
@@ -6298,7 +6501,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const side = incomeTable ? 'inc' : hasA && !hasL ? 'asset' : hasL && !hasA ? 'liab' : 'bal';
       const tIndex = out.sources.length;
       const ctxTxt = (t.titleLines || []).join(' ') + ' ' + (t.context || '');
-      const ctxPer = S.periodOf(((t.titleLines || []).join(' ').match(/(\d{1,2}[.\/\-]\d{1,2}[.\/\-](19|20)\d{2})|((19|20)\d{2})/) || [''])[0]);
+      // período del título: "por el período terminado al 31 de agosto de 2026", "al 31.12.2025", "2025"
+      const tlTxt = (t.titleLines || []).join(' ');
+      const ctxFull = S.periodOf(tlTxt);
+      const ctxPer = ctxFull && ctxFull.kind !== 'year' ? ctxFull : S.periodOf((tlTxt.match(/(\d{1,2}[.\/\-]\d{1,2}[.\/\-](19|20)\d{2})|((19|20)\d{2})/) || [''])[0]);
       // columna de notas ("Nota 5", "7"): números chicos junto a montos grandes; no es un período
       const bigOf = (c) => Math.max(0, ...t.rows.map((r) => Math.abs(S.parseNumber(r[c], t.profiles[c].fmt) || 0)));
       const maxBig = Math.max(0, ...valCols.map(bigOf));
@@ -6320,16 +6526,29 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       }
       // un "período" que es un monto ("15.370.000") viene de un encabezado mal leído: la tabla no se usa
       if (!valCols.length || (heads.every((p) => !p) && valCols.some((c) => S.isNumLike(String(t.headers[c] || '')) || /^Columna \d+$/.test(t.headers[c])))) continue;
+      // columnas de un mes en un estado de resultados comparativo ("Agosto 2026 | Agosto 2025"): son acumulados
+      // del año a ese mes; si los meses son distintos ("Enero | Febrero | Marzo") son meses sueltos
+      const monthCols = heads.filter((p) => p && p.kind === 'month');
+      const sameMonth = monthCols.length >= 1 && monthCols.every((p) => p.m1 === monthCols[0].m1);
       const pers = valCols.map((c, k) => {
         let p = heads[k];
         if (!p) return { key: 'h:' + U.norm(t.headers[c]), label: String(t.headers[c]), loose: true };
         // un cierre en una tabla de resultados = acumulado desde enero
-        if (p.kind === 'date' && incomeTable) p = Object.assign({}, p, { from: U.dayFromYMD(p.y, 1, 1), months: p.m1, kind: 'ytd' });
+        if ((p.kind === 'date' || (p.kind === 'month' && sameMonth && !/\b(mes de|del mes|mensual)\b/.test(U.norm(t.headers[c])))) && incomeTable) p = Object.assign({}, p, { from: U.dayFromYMD(p.y, 1, 1), months: p.m1, kind: 'ytd' });
         return p;
       });
+      // trimestre y acumulado con el mismo cierre ("tres meses" y "seis meses" al 30 de junio): se usa el acumulado
+      for (let k = pers.length - 1; k >= 0; k--) {
+        const other = pers.findIndex((q, j) => j !== k && q.key === pers[k].key && (q.months || 0) > (pers[k].months || 0));
+        if (other >= 0 && !pers[k].loose) {
+          pers.splice(k, 1);
+          valCols.splice(k, 1);
+        }
+      }
       pers.forEach((p) => {
         const cur = byKey.get(p.key) || { key: p.key, to: p.to || null, from: null, months: null, loose: true };
-        if (p.from && (!cur.from || !p.loose)) {
+        // un balance es una foto a una fecha: no define la duración del período (la define el estado de resultados)
+        if (p.from && (incomeTable || p.kind !== 'month') && (!cur.from || !p.loose)) {
           cur.from = p.from;
           cur.months = p.months;
         }
@@ -6340,6 +6559,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       });
       const scale = t.scale !== 1 ? t.scale : (t.headerHints[lc] && t.headerHints[lc].scale) || Math.max(1, ...valCols.map((c) => (t.headerHints[c] && t.headerHints[c].scale) || 1));
       out.sources.push(t.sourceName + ' · ' + t.name);
+      ((t.meta && t.meta.notes) || []).forEach((n) => out.notes.push({ text: n, tIndex, scale }));
       t.rows.forEach((row) => {
         const label = textAt(row, lc);
         if (!label) return;
@@ -6546,20 +6766,32 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
 
     // ---- falencias estructurales (qué análisis no se pueden hacer) ----
     const gap = (id, need, impact, how, sev) => out.gaps.push({ id, need, impact, how, severity: sev || 'medium' });
-    if (!S.length) gap('ventas', 'Detalle de ventas', 'Sin ventas no hay ranking de productos, sucursales, fechas ni tendencias.', 'Carga un Excel o CSV con fecha, producto, sucursal, unidades y monto.', 'critical');
-    else {
-      if (!m.hasQty) gap('cantidad', 'Unidades vendidas', 'No se puede saber el producto más vendido en unidades ni separar efecto precio y volumen.', 'Agrega la columna Unidades.', 'high');
-      if (!m.hasCost) gap('costo', 'Costo de cada venta', 'No se puede calcular el margen por producto ni por sucursal.', 'Agrega Costo unitario o Costo total a la tabla de ventas.', 'high');
-      if (!m.hasBranch) gap('sucursal', 'Sucursal o tienda', 'No se puede comparar sucursales.', 'Agrega la columna Sucursal.', 'medium');
-      if (!m.hasProduct) gap('producto', 'Producto', 'No se puede saber qué producto genera más ingresos.', 'Agrega Producto o SKU.', 'high');
-      if (m.salesGrain !== 'day') gap('dia', 'Ventas por día', 'Sin fecha diaria no hay mejor/peor día ni ranking semanal.', 'Exporta las ventas con fecha diaria.', 'medium');
-    }
-    if (!model.expenses.length) gap('gastos', 'Gastos operacionales', 'No hay listado de gastos de mayor a menor ni resultado operacional.', 'Carga el libro de gastos o el mayor de cuentas de gasto (período, concepto, monto).', 'high');
-    if (!model.budget.length) gap('presupuesto', 'Presupuesto', 'No se pueden medir desviaciones respecto del plan.', 'Carga el presupuesto mensual por sucursal y por concepto.', 'medium');
-    if (!model.inventory.length && !(model.statements && Object.values(model.statements.fig).some((f) => f.inv))) gap('inventario', 'Inventario', 'No hay análisis de stock, quiebres ni sobre-stock.', 'Carga un corte de inventario con SKU, stock y costo.', 'medium');
-    if (!model.competitors.length) gap('competencia', 'Precios de la competencia', 'Sin precios de mercado no hay comparativa de precios (salvo referencia estimada con IA).', 'Carga un relevamiento de precios (producto, competidor, precio).', 'low');
-    if (!model.statements) gap('estados', 'Estados financieros', 'Los ratios de liquidez, endeudamiento y rentabilidad sobre patrimonio no se pueden calcular.', 'Carga el balance y el estado de resultados (dos años si es posible).', 'medium');
+    if (model.meta && model.meta.bank && model.statements) {
+      // banco: lo que falta para un análisis bancario completo (no aplica pedir productos, sucursales ni inventario)
+      const BF = model.statements.bankFig || {};
+      const fs = Object.values(BF);
+      const anyF = (fn) => fs.some((f) => f && fn(f));
+      gap('bk-npl', 'Morosidad y cartera deteriorada', 'No se puede medir la calidad de la cartera (morosidad de 90 días, cartera deteriorada y cobertura de provisiones) ni compararla con el sistema.', 'Carga la nota de riesgo de crédito de los estados o el reporte del banco en la CMF.', 'medium');
+      gap('bk-cap', 'Índice de adecuación de capital (Basilea III)', 'No se puede evaluar la solvencia regulatoria (capital sobre activos ponderados por riesgo).', 'Usa la nota de adecuación de capital o el reporte del banco en la CMF.', 'low');
+      if (!anyF((f) => f.loansCom || f.loansHome || f.loansCons)) gap('bk-seg', 'Colocaciones por segmento', 'No se ve la mezcla de la cartera (comercial, vivienda y consumo), que explica buena parte del riesgo y del margen.', 'Carga los estados con el detalle de créditos o la nota de colocaciones.', 'low');
+      if (!anyF((f) => f.demand || f.time)) gap('bk-dep', 'Depósitos a la vista y a plazo', 'No se puede medir la estructura de financiamiento ni la relación entre colocaciones y depósitos.', 'Carga un balance con el detalle de los pasivos financieros a costo amortizado.', 'low');
+      if (fs.length < 2) gap('bk-prev', 'Un período para comparar', 'Sin el mismo período del año anterior no hay tendencia de ingresos, gastos, riesgo ni rentabilidad.', 'Carga también los estados del mismo mes del año anterior (y el balance de diciembre).', 'medium');
+    } else {
+      if (!S.length) gap('ventas', 'Detalle de ventas', 'Sin ventas no hay ranking de productos, sucursales, fechas ni tendencias.', 'Carga un Excel o CSV con fecha, producto, sucursal, unidades y monto.', 'critical');
+      else {
+        if (!m.hasQty) gap('cantidad', 'Unidades vendidas', 'No se puede saber el producto más vendido en unidades ni separar efecto precio y volumen.', 'Agrega la columna Unidades.', 'high');
+        if (!m.hasCost) gap('costo', 'Costo de cada venta', 'No se puede calcular el margen por producto ni por sucursal.', 'Agrega Costo unitario o Costo total a la tabla de ventas.', 'high');
+        if (!m.hasBranch) gap('sucursal', 'Sucursal o tienda', 'No se puede comparar sucursales.', 'Agrega la columna Sucursal.', 'medium');
+        if (!m.hasProduct) gap('producto', 'Producto', 'No se puede saber qué producto genera más ingresos.', 'Agrega Producto o SKU.', 'high');
+        if (m.salesGrain !== 'day') gap('dia', 'Ventas por día', 'Sin fecha diaria no hay mejor/peor día ni ranking semanal.', 'Exporta las ventas con fecha diaria.', 'medium');
+      }
+      if (!model.expenses.length) gap('gastos', 'Gastos operacionales', 'No hay listado de gastos de mayor a menor ni resultado operacional.', 'Carga el libro de gastos o el mayor de cuentas de gasto (período, concepto, monto).', 'high');
+      if (!model.budget.length) gap('presupuesto', 'Presupuesto', 'No se pueden medir desviaciones respecto del plan.', 'Carga el presupuesto mensual por sucursal y por concepto.', 'medium');
+      if (!model.inventory.length && !(model.statements && Object.values(model.statements.fig).some((f) => f.inv))) gap('inventario', 'Inventario', 'No hay análisis de stock, quiebres ni sobre-stock.', 'Carga un corte de inventario con SKU, stock y costo.', 'medium');
+      if (!model.competitors.length) gap('competencia', 'Precios de la competencia', 'Sin precios de mercado no hay comparativa de precios (salvo referencia estimada con IA).', 'Carga un relevamiento de precios (producto, competidor, precio).', 'low');
+      if (!model.statements) gap('estados', 'Estados financieros', 'Los ratios de liquidez, endeudamiento y rentabilidad sobre patrimonio no se pueden calcular.', 'Carga el balance y el estado de resultados (dos años si es posible).', 'medium');
 
+    }
     // ---- cuadraturas entre fuentes ----
     const recon = (title, aLabel, a, bLabel, b, note) => {
       if (a === null || b === null || !isFinite(a) || !isFinite(b) || !b) return;
@@ -6660,6 +6892,16 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     pref = pref || { mode: 'auto' };
     const m = model.meta;
     if (m.minDay === null || m.minDay === undefined) return { mode: 'none', cur: null, prev: null };
+    // estados financieros de períodos parciales o de un banco: los dos períodos vienen dados (ene–ago 2026 vs ene–ago 2025)
+    const fx = m.fixedPeriods;
+    if (fx && fx.cur && (!pref.mode || pref.mode === 'auto')) {
+      const mkF = (p) => ({ from: p.from, to: p.to, fromKey: U.monthKey(p.from), toKey: U.monthKey(p.to), label: p.label, fixed: true });
+      const c0 = mkF(fx.cur);
+      const p0 = fx.prev ? mkF(fx.prev) : null;
+      const ys = [];
+      for (let y = +(p0 || c0).fromKey.slice(0, 4); y <= +c0.toKey.slice(0, 4); y++) ys.push(y);
+      return { mode: 'fixed', cur: c0, prev: p0, lfl: null, partialLast: false, lastKey: c0.toKey, lastFull: c0.toKey, firstKey: (p0 || c0).fromKey, span: U.monthsBetween((p0 || c0).fromKey, c0.toKey) + 1, years: ys };
+    }
     const lastKey = U.monthKey(m.maxDay);
     const partialLast = m.lastMonthPartial !== undefined ? m.lastMonthPartial : m.salesGrain === 'day' && m.maxDay < U.monthEnd(lastKey) - 2;
     const lastFull = partialLast ? U.addMonths(lastKey, -1) : lastKey;
@@ -8529,6 +8771,671 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   };
 })(typeof globalThis !== 'undefined' ? (globalThis.V = globalThis.V || {}) : (window.V = window.V || {}));
 
+/* ==== 06c_bank.js ==== */
+/* Vértice · bancos (formato CMF: Compendio de Normas Contables para Bancos).
+   Un banco no tiene ventas, costo de ventas ni inventario, ni separa lo corriente de lo no corriente:
+   este módulo reconoce sus estados, calcula los indicadores de la banca (margen de intereses, eficiencia,
+   costo de riesgo, rentabilidad sobre patrimonio, solvencia y liquidez) y arma los hallazgos, riesgos,
+   acciones y el informe con ese lenguaje. */
+(function (V) {
+  'use strict';
+  const U = V.U;
+  const BK = (V.BK = {});
+  const has = (x) => x !== null && x !== undefined && isFinite(x);
+  const nz = (x) => (has(x) ? x : 0);
+  const div = (a, b) => (has(a) && has(b) && b !== 0 ? a / b : null);
+  const f$ = (x) => U.fmtMoney(x, { compact: true });
+  const fp = (x, d) => U.fmtPct(x, d === undefined ? 1 : d);
+  const fP = (x, d) => U.fmtPct(x, d === undefined ? 1 : d, true);
+  const fN = (x, d) => U.fmtNum(x, d || 0);
+  const fPP = (x) => U.fmtPP(x);
+
+  /* referencia del sistema bancario chileno (CMF, informe de desempeño a agosto de 2026) */
+  BK.SYSTEM = { label: 'sistema bancario chileno, CMF, agosto de 2026', roae: 0.1509, roaa: 0.0134, provRatio: 0.0251, npl90: 0.0234 };
+
+  /* etiqueta → clave. Lado: A activo, L pasivo o patrimonio, I resultados, sin lado: cualquiera.
+     exp = gasto (se guarda en positivo aunque venga entre paréntesis) */
+  const RULES = [
+    ['tle', /^total (de )?pasivos? y patrimonio/, 'L'],
+    ['ta', /^total (de )?activos?$/, 'A'],
+    ['tl', /^total (de )?pasivos?$/, 'L'],
+    ['eq', /^total (del )?patrimonio( neto)?$/, 'L'],
+    ['cash', /^efectivo y dep[oó]sitos en bancos/, 'A'],
+    ['settle', /^operaciones con liquidaci[oó]n en curso/],
+    ['trading', /^activos financieros (mantenidos )?para negociar/, 'A'],
+    ['fvtplO', /^activos financieros (no destinados a negociaci[oó]n|designados a valor razonable)/, 'A'],
+    ['fvoci', /^activos financieros a valor razonable con cambios en otro resultado integral|^instrumentos (de inversi[oó]n )?disponibles para la venta/, 'A'],
+    ['hedge', /^contratos de derivados financieros para cobertura/],
+    ['amortA', /^activos financieros a costo amortizado/, 'A'],
+    ['repoA', /^derechos por pactos de retroventa/, 'A'],
+    ['bankDue', /^adeudado por bancos/, 'A'],
+    ['loansCom', /(creditos y cuentas por cobrar a clientes|colocaciones)\s*[-–:]?\s*(cartera )?comerciales?$/, 'A'],
+    ['loansHome', /(creditos y cuentas por cobrar a clientes|colocaciones)\s*[-–:]?\s*(para (la )?)?vivienda$/, 'A'],
+    ['loansCons', /(creditos y cuentas por cobrar a clientes|colocaciones)\s*[-–:]?\s*(de )?consumo$/, 'A'],
+    ['loansTot', /^(creditos y cuentas por cobrar a clientes|colocaciones( totales)?)( \(neto\))?$/, 'A'],
+    ['allow', /^(menos:? )?provisiones (constituidas )?por riesgo de credito$/, 'A'],
+    ['invSoc', /^inversiones en sociedades/, 'A'],
+    ['intang', /^(activos )?intangibles/, 'A'],
+    ['fixed', /^activos? fijos?$/, 'A'],
+    ['rou', /^activos? por derecho a usar/, 'A'],
+    ['otherA', /^otros activos$/, 'A'],
+    ['tradingL', /^pasivos financieros (mantenidos )?para negociar/, 'L'],
+    ['amortL', /^pasivos financieros a costo amortizado/, 'L'],
+    ['demand', /^depositos y otras obligaciones a la vista/, 'L'],
+    ['time', /^depositos y otras captaciones a plazo/, 'L'],
+    ['repoL', /^obligaciones por pactos de retrocompra/, 'L'],
+    ['bankDebt', /^obligaciones con bancos|^prestamos obtenidos/, 'L'],
+    ['bonds', /^instrumentos (financieros )?de deuda emitidos/, 'L'],
+    ['otherFinL', /^otras obligaciones financieras/, 'L'],
+    ['capReg', /^instrumentos financieros de capital regulatorio|^bonos subordinados/, 'L'],
+    ['provCont', /^provisiones por contingencias/, 'L'],
+    ['provDiv', /^provisiones para dividendos/, 'L'],
+    ['provSpecial', /^provisiones especiales por riesgo de credito/, 'L'],
+    ['otherL', /^otros pasivos$/, 'L'],
+    ['eqOwners', /^de los propietarios del banco|^patrimonio atribuible a (los )?(propietarios|tenedores)/, 'L'],
+    ['nci', /^del interes no controlador$/, 'L'],
+    ['cap', /^capital( pagado| emitido)?$/, 'L'],
+    ['reserves', /^reservas$/, 'L'],
+    ['oci', /^otro resultado integral acumulado/, 'L'],
+    ['re', /^utilidades (\(perdidas\) )?acumuladas/, 'L'],
+    ['lessDiv', /^menos:? provisiones para dividendos/, 'L'],
+    ['niBal', /^utilidad(es)? \(perdida\) del (periodo|ejercicio)|^utilidad del (periodo|ejercicio)|^resultado del (periodo|ejercicio)$/, 'L'],
+    // resultados
+    ['intInc', /^ingresos? por intereses$/, 'I'],
+    ['intExp', /^gastos? por intereses$/, 'I', 1],
+    ['nii', /^ingreso neto por intereses$/, 'I'],
+    ['niir', /^ingreso neto por intereses y reajustes$/, 'I'],
+    ['readjInc', /^ingresos? por reajustes$/, 'I'],
+    ['readjExp', /^gastos? por reajustes$/, 'I', 1],
+    ['nir', /^ingreso neto por reajustes$/, 'I'],
+    ['feeInc', /^ingresos? por comisiones$/, 'I'],
+    ['feeExp', /^gastos? por comisiones$/, 'I', 1],
+    ['fees', /^ingreso neto por comisiones$/, 'I'],
+    ['finRes', /^resultado financiero neto$|^utilidad neta de operaciones financieras$/, 'I'],
+    ['invRes', /^resultado por inversiones en sociedades/, 'I'],
+    ['otherInc', /^otros ingresos( operacionales)?$/, 'I'],
+    ['opInc', /^total ingresos? operacionales?( netos?)?$|^total ingreso operacional$|^resultado operacional bruto$/, 'I'],
+    ['staff', /^gastos? por obligaciones de beneficios a (los )?empleados|^remuneraciones y gastos (del|de) personal/, 'I', 1],
+    ['adm', /^gastos de administracion$/, 'I', 1],
+    ['depam', /^depreciacion(es)? y amortizacion(es)?$/, 'I', 1],
+    ['impair', /^deterioro(s)?( de activos no financieros)?$/, 'I', 1],
+    ['otherOpExp', /^otros gastos operacionales$/, 'I', 1],
+    ['opExp', /^total gastos operacionales$/, 'I', 1],
+    ['preProv', /^resultado operacional antes de (perdidas crediticias|provisiones)/, 'I'],
+    ['credLoss', /^gastos? (de|por) perdidas crediticias$|^provisiones por riesgo de credito$|^gasto por provisiones$/, 'I', 1],
+    ['opRes', /^resultado operacional$/, 'I'],
+    ['ebt', /^resultado (de operaciones continuas )?antes de impuestos?( a la renta)?$/, 'I'],
+    ['tax', /^impuestos? a la renta$/, 'I', 1],
+    ['ni', /^utilidad consolidada del (periodo|ejercicio)$|^utilidad \(perdida\) consolidada del (periodo|ejercicio)$|^utilidad (\(perdida\) )?del (periodo|ejercicio)$|^resultado del (periodo|ejercicio)$/, 'I'],
+    ['niOwners', /^propietarios del banco$/, 'I'],
+  ];
+  // partidas que solo existen en un banco
+  const BANKISH = new Set(['nii', 'niir', 'nir', 'fees', 'intInc', 'intExp', 'demand', 'time', 'loansCom', 'loansHome', 'loansCons', 'credLoss', 'preProv', 'bankDue', 'capReg', 'provSpecial', 'finRes', 'repoA', 'repoL', 'settle', 'amortA', 'amortL']);
+
+  const clean = (label) =>
+    U.norm(label)
+      .replace(/^[a-z0-9]{1,3}[.)]\s+/, '')
+      .replace(/\s*\(\*+\)\s*/g, ' ')
+      .replace(/\s*\(nota\s*\d+\)\s*$/, '')
+      .replace(/[:]+$/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  // side: 'A', 'L' o 'I' (null = cualquiera)
+  BK.ruleOf = function (label, side) {
+    const t = clean(label);
+    for (const r of RULES) {
+      if (side && r[2] && r[2] !== side) continue;
+      if (r[1].test(t)) return r;
+    }
+    return null;
+  };
+
+  BK.detect = function (st) {
+    if (!st || !st.items || !st.items.length) return false;
+    const keys = new Set();
+    st.items.forEach((it) => {
+      const r = BK.ruleOf(it.label);
+      if (r && BANKISH.has(r[0])) keys.add(r[0]);
+    });
+    return keys.size >= 3;
+  };
+
+  /* cifras de cada período a partir de las partidas leídas */
+  BK.figures = function (st) {
+    // tipo de cada tabla: resultados o balance, según las partidas que trae
+    const tk = {};
+    st.items.forEach((it) => {
+      const r = BK.ruleOf(it.label);
+      if (!r) return;
+      const k = (tk[it.tIndex] = tk[it.tIndex] || { I: 0, B: 0 });
+      if (r[2] === 'I') k.I++;
+      else if (r[2]) k.B++;
+    });
+    const fig = {};
+    let afterTA = false; // en el balance, lo que viene después del total de activos es pasivo o patrimonio
+    st.items.forEach((it) => {
+      const t = tk[it.tIndex] || { I: 0, B: 0 };
+      const isInc = t.I > t.B;
+      const side = isInc ? 'I' : afterTA ? 'L' : 'A';
+      const r = BK.ruleOf(it.label, side);
+      if (!r) return;
+      let key = r[0];
+      if (key === 'settle' || key === 'hedge') key += side;
+      Object.keys(it.values).forEach((p) => {
+        const f = (fig[p] = fig[p] || {});
+        if (f[key] !== undefined) return;
+        const v = it.values[p];
+        if (!has(v)) return;
+        f[key] = r[3] ? Math.abs(v) : v;
+      });
+      if (!isInc && key === 'ta') afterTA = true;
+    });
+    // notas al pie: "(*) Incluye Créditos y cuentas por cobrar a clientes (neto de provisiones) por $39.364.572 millones"
+    const notes = st.notes || [];
+    const balPs = Object.keys(fig).filter((p) => has(fig[p].ta));
+    const incPs = Object.keys(fig).filter((p) => has(fig[p].opInc) || has(fig[p].ni) || has(fig[p].nii));
+    const amt = (txt, unitScale) => {
+      const m = txt.match(/\$\s*([\d.]+(?:,\d+)?)\s*(millones|mm\$|miles de millones)?/i);
+      if (!m) return null;
+      const v = +m[1].replace(/\./g, '').replace(',', '.');
+      const u = (m[2] || '').toLowerCase();
+      return v * (u === 'millones' || u === 'mm$' ? 1e6 : u === 'miles de millones' ? 1e9 : unitScale || 1);
+    };
+    notes.forEach((n) => {
+      const t = U.norm(n.text);
+      if (/creditos y cuentas por cobrar a clientes/.test(t) && balPs.length === 1) {
+        const v = amt(n.text, n.scale);
+        if (v && !has(fig[balPs[0]].loansTot)) {
+          fig[balPs[0]].loansTot = v;
+          fig[balPs[0]].loansNet = /neto de provisiones/.test(t);
+        }
+      }
+      if (/provisiones adicionales/.test(t) && incPs.length === 1) {
+        const v = amt(n.text, n.scale);
+        if (v) fig[incPs[0]].addProv = v;
+      }
+    });
+    // derivadas
+    Object.values(fig).forEach((f) => {
+      const segs = ['loansCom', 'loansHome', 'loansCons'].filter((k) => has(f[k]));
+      f.loans = has(f.loansTot) ? f.loansTot : segs.length ? U.sum(segs, (k) => f[k]) : null;
+      if (has(f.demand) || has(f.time)) f.deposits = nz(f.demand) + nz(f.time);
+      if (!has(f.nii) && has(f.intInc) && has(f.intExp)) f.nii = f.intInc - f.intExp;
+      if (!has(f.nir) && has(f.readjInc) && has(f.readjExp)) f.nir = f.readjInc - f.readjExp;
+      if (!has(f.fees) && has(f.feeInc) && has(f.feeExp)) f.fees = f.feeInc - f.feeExp;
+      f.margin = has(f.niir) ? f.niir : has(f.nii) || has(f.nir) ? nz(f.nii) + nz(f.nir) : null;
+      if (!has(f.opExp) && [f.staff, f.adm, f.depam, f.impair, f.otherOpExp].some(has)) f.opExp = nz(f.staff) + nz(f.adm) + nz(f.depam) + nz(f.impair) + nz(f.otherOpExp);
+      if (!has(f.opInc) && has(f.margin)) f.opInc = f.margin + nz(f.fees) + nz(f.finRes) + nz(f.invRes) + nz(f.otherInc);
+      if (!has(f.preProv) && has(f.opInc) && has(f.opExp)) f.preProv = f.opInc - f.opExp;
+      if (!has(f.ni)) f.ni = has(f.niOwners) ? f.niOwners : has(f.niBal) ? f.niBal : null;
+      if (!has(f.eq) && has(f.ta) && has(f.tl)) f.eq = f.ta - f.tl;
+      if (!has(f.tl) && has(f.ta) && has(f.eq)) f.tl = f.ta - f.eq;
+      f.wholesale = nz(f.bonds) + nz(f.capReg) + nz(f.bankDebt);
+      f.liquid = nz(f.cash) + nz(f.trading) + nz(f.fvoci);
+    });
+    return fig;
+  };
+
+  /* ---------- análisis ---------- */
+  BK.analyze = function (model) {
+    const st = model.statements;
+    if (!st || !st.bank || !st.bankFig) return null;
+    const F = st.bankFig;
+    const info = st.info || {};
+    const toOf = (p) => (info[p] && info[p].to) || 0;
+    const ps = Object.keys(F).filter((p) => info[p]).sort((a, b) => toOf(a) - toOf(b));
+    if (!ps.length) return null;
+    const hasBal = (p) => has(F[p].ta);
+    const hasInc = (p) => has(F[p].opInc) || has(F[p].ni);
+    const rev = ps.slice().reverse();
+    const last = rev.find((p) => hasBal(p) && hasInc(p)) || rev.find(hasInc) || rev[0];
+    const months = (info[last] && info[last].months) || 12;
+    const [ly, lm] = U.ymd(toOf(last));
+    const prevBal = rev.find((p) => p !== last && hasBal(p) && toOf(p) < toOf(last)) || null;
+    const prevInc = ps.find((p) => {
+      if (p === last || !hasInc(p)) return false;
+      const [y, m] = U.ymd(toOf(p));
+      return y === ly - 1 && m === lm && ((info[p] && info[p].months) || 12) === months;
+    }) || null;
+    const f = F[last];
+    const b0 = prevBal ? F[prevBal] : null;
+    const i0 = prevInc ? F[prevInc] : null;
+    const ann = 12 / months;
+    const avg = (a, b) => (has(a) && has(b) ? (a + b) / 2 : has(a) ? a : null);
+    const kOf = (x, bal0, mo) => {
+      const an = 12 / (mo || 12);
+      const eqO = has(x.eqOwners) ? x.eqOwners : x.eq;
+      const eqO0 = bal0 ? (has(bal0.eqOwners) ? bal0.eqOwners : bal0.eq) : null;
+      return {
+        eff: div(x.opExp, x.opInc),
+        margin: x.margin,
+        nim: div(has(x.margin) ? x.margin * an : null, avg(x.ta, bal0 && bal0.ta)),
+        feeShare: div(x.fees, x.opInc),
+        marginShare: div(x.margin, x.opInc),
+        finShare: div(x.finRes, x.opInc),
+        readjShare: div(x.nir, x.opInc),
+        cor: div(has(x.credLoss) ? x.credLoss * an : null, avg(x.loans, bal0 && bal0.loans)),
+        // costo de riesgo sin las provisiones adicionales (voluntarias), que no son pérdidas ya ocurridas
+        corCore: has(x.addProv) && has(x.credLoss) ? div((x.credLoss - x.addProv) * an, avg(x.loans, bal0 && bal0.loans)) : null,
+        lossToPre: div(x.credLoss, x.preProv),
+        roae: div(has(has(x.niOwners) ? x.niOwners : x.ni) ? (has(x.niOwners) ? x.niOwners : x.ni) * an : null, avg(eqO, eqO0)),
+        roaa: div(has(x.ni) ? x.ni * an : null, avg(x.ta, bal0 && bal0.ta)),
+        eqRatio: div(x.eq, x.ta),
+        lev: div(x.ta, x.eq),
+        ldr: div(x.loans, x.deposits),
+        loansTa: div(x.loans, x.ta),
+        liqTa: div(x.liquid, x.ta),
+        liqDemand: div(x.liquid, x.demand),
+        wholesaleTl: div(x.wholesale, x.tl),
+        demandShare: div(x.demand, x.deposits),
+        taxRate: div(x.tax, has(x.ebt) ? x.ebt : x.opRes),
+        payout: div(x.provDiv, has(x.niOwners) ? x.niOwners : x.ni),
+        specialProv: div(x.provSpecial, x.loans),
+      };
+    };
+    const k = kOf(f, b0, months);
+    const k0 = i0 ? kOf(i0, null, months) : null;
+    const g = (a, b) => (has(a) && has(b) && b !== 0 ? a / Math.abs(b) - 1 : null);
+    const growth = i0
+      ? { opInc: g(f.opInc, i0.opInc), margin: g(f.margin, i0.margin), fees: g(f.fees, i0.fees), opExp: g(f.opExp, i0.opExp), credLoss: g(f.credLoss, i0.credLoss), ni: g(f.ni, i0.ni), finRes: g(f.finRes, i0.finRes) }
+      : null;
+    const balG = b0
+      ? { ta: g(f.ta, b0.ta), loans: g(f.loans, b0.loans), loansCom: g(f.loansCom, b0.loansCom), loansHome: g(f.loansHome, b0.loansHome), loansCons: g(f.loansCons, b0.loansCons), deposits: g(f.deposits, b0.deposits), demand: g(f.demand, b0.demand), time: g(f.time, b0.time), eq: g(f.eq, b0.eq) }
+      : null;
+    return { last, prevBal, prevInc, months, ann, fig: F, f, b0, i0, k, k0, growth, balG, periods: ps, info };
+  };
+
+  /* ---------- hallazgos, riesgos, acciones y titulares para el reporte ---------- */
+  BK.PILLARS = [
+    { id: 'A', name: 'Ingresos y márgenes', q: '¿De dónde vienen los ingresos del banco y cómo evolucionan?' },
+    { id: 'B', name: 'Eficiencia y gastos', q: '¿Cuánto cuesta operar el banco frente a lo que genera?' },
+    { id: 'C', name: 'Riesgo de crédito', q: '¿Cómo se comporta la cartera de créditos y cuánto cuesta su riesgo?' },
+    { id: 'D', name: 'Solvencia, liquidez y rentabilidad', q: '¿Tiene el banco patrimonio y liquidez suficientes, y qué rentabilidad obtiene?' },
+  ];
+  // "ene–ago 2026" → "enero a agosto de 2026"; "2025" → "2025"
+  const MONTHS_LONG = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  BK.longPeriod = function (B, p) {
+    const i = B.info[p];
+    if (!i || !i.to) return p;
+    const [y, m] = U.ymd(i.to);
+    if (i.months && i.months < 12) return 'entre ' + MONTHS_LONG[m - i.months] + ' y ' + MONTHS_LONG[m - 1] + ' de ' + y;
+    return m === 12 ? String(y) : 'al ' + U.ymd(i.to)[2] + ' de ' + MONTHS_LONG[m - 1] + ' de ' + y;
+  };
+  const MONTHS_SHORT = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  // fecha corta de un balance para encabezados de columna: "31 ago 2026"
+  BK.shortDate = function (B, p) {
+    const i = B.info[p];
+    if (!i || !i.to) return p;
+    const [y, m, d] = U.ymd(i.to);
+    return d + ' ' + MONTHS_SHORT[m - 1] + ' ' + y;
+  };
+  BK.balDate = function (B, p) {
+    const i = B.info[p];
+    if (!i || !i.to) return p;
+    const [y, m, d] = U.ymd(i.to);
+    return d + ' de ' + MONTHS_LONG[m - 1] + ' de ' + y;
+  };
+
+  BK.insights = function (B, api) {
+    const { F, RISK, ACT, why } = api;
+    const f = B.f;
+    const k = B.k;
+    const k0 = B.k0;
+    const G = B.growth;
+    const BG = B.balG;
+    const per = BK.longPeriod(B, B.last);
+    const pInc = B.prevInc;
+    const annTxt = B.months < 12 ? ' (anualizado)' : '';
+    const S = BK.SYSTEM;
+    // A · ingresos y márgenes
+    if (has(f.opInc)) {
+      const parts = [['el margen de intereses', f.nii], ['los reajustes', f.nir], ['las comisiones', f.fees], ['el resultado financiero', f.finRes], ['otros ingresos', nz(f.otherInc) + nz(f.invRes)]].filter((x) => has(x[1]) && x[1] > 0);
+      F({ id: 'BK-inc', pillar: 'A', tone: G && G.opInc !== null ? (G.opInc > 0.02 ? 'pos' : G.opInc < -0.02 ? 'neg' : 'neu') : 'neu', score: 70, text: 'Los ingresos operacionales suman ' + f$(f.opInc) + ' ' + per + (G && G.opInc !== null ? ' (' + fP(G.opInc) + ' frente al mismo período de ' + (U.ymd(B.info[pInc].to)[0]) + ')' : '') + ': ' + U.listJoin(parts.map((x) => x[0] + ' ' + fp(x[1] / f.opInc, 0))) + '.' });
+      if (has(k.nim)) F({ id: 'BK-nim', pillar: 'A', tone: 'neu', score: 55, text: 'El margen de intereses y reajustes equivale a ' + fp(k.nim) + ' de los activos' + annTxt + (k0 && has(k0.nim) ? ' (' + fp(k0.nim) + ' un año antes)' : '') + '.' });
+      if (has(k.readjShare) && k.readjShare > 0.08) {
+        F({ id: 'BK-readj', pillar: 'A', tone: 'neu', score: 50, text: 'Los reajustes (ingresos ligados a la inflación y la UF) aportan ' + f$(f.nir) + ', el ' + fp(k.readjShare, 0) + ' de los ingresos: si la inflación baja, este ingreso se reduce.' });
+        why.A.push('Una parte relevante del margen viene de la inflación (reajustes en UF): con una inflación más baja, el ingreso operacional baja aunque la cartera crezca.');
+      }
+      if (has(k.feeShare)) F({ id: 'BK-fees', pillar: 'A', tone: k.feeShare >= 0.18 ? 'pos' : 'neu', score: 45, text: 'Las comisiones netas (' + f$(f.fees) + ') son el ' + fp(k.feeShare, 0) + ' de los ingresos operacionales' + (G && G.fees !== null ? ' y ' + (G.fees >= 0 ? 'crecieron ' : 'cayeron ') + fp(Math.abs(G.fees), 1) : '') + ': es ingreso que no depende de la tasa de interés ni del riesgo de crédito.' });
+      if (G && G.finRes !== null && Math.abs(G.finRes) > 0.15 && has(f.finRes)) why.A.push('El resultado financiero (tesorería y operaciones de mercado) ' + (G.finRes > 0 ? 'subió ' : 'cayó ') + fp(Math.abs(G.finRes), 0) + ': es un ingreso volátil, que depende de tasas y tipo de cambio.');
+    }
+    // B · eficiencia
+    if (has(k.eff)) {
+      const tone = k.eff < 0.45 ? 'pos' : k.eff > 0.55 ? 'neg' : 'neu';
+      F({ id: 'BK-eff', pillar: 'B', tone: k0 && has(k0.eff) && k.eff > k0.eff + 0.02 ? 'neg' : tone, score: 68, text: 'Eficiencia: los gastos operacionales (' + f$(f.opExp) + ') equivalen al ' + fp(k.eff) + ' de los ingresos operacionales' + (k0 && has(k0.eff) ? ' (' + fp(k0.eff) + ' un año antes)' : '') + '. Cuanto más bajo, más eficiente: ' + (k.eff < 0.45 ? 'es un nivel muy eficiente.' : k.eff > 0.55 ? 'es un nivel alto para un banco grande.' : 'es un nivel intermedio.') });
+      if (G && G.opExp !== null && G.opInc !== null) {
+        F({ id: 'BK-exp', pillar: 'B', tone: G.opExp > G.opInc + 0.02 ? 'neg' : 'neu', score: 55, text: 'Los gastos ' + (G.opExp >= 0 ? 'crecieron ' : 'bajaron ') + fp(Math.abs(G.opExp)) + ' frente a ' + fP(G.opInc) + ' de los ingresos.' });
+        if (G.opExp > G.opInc + 0.02) why.B.push('Los gastos crecen más rápido que los ingresos: la eficiencia se deteriora aunque el banco siga siendo rentable.');
+      }
+      const det = [['beneficios a empleados', f.staff], ['administración', f.adm], ['depreciación y amortización', f.depam]].filter((x) => has(x[1]) && x[1] > 0);
+      if (det.length >= 2) F({ id: 'BK-expmix', pillar: 'B', tone: 'neu', score: 40, text: 'Composición del gasto: ' + U.listJoin(det.map((x) => x[0] + ' ' + f$(x[1]) + ' (' + fp(x[1] / f.opExp, 0) + ')')) + '.' });
+    }
+    // C · riesgo de crédito
+    if (has(f.loans)) {
+      const segs = [['comerciales', f.loansCom], ['vivienda', f.loansHome], ['consumo', f.loansCons]].filter((x) => has(x[1]) && x[1] > 0);
+      F({ id: 'BK-loans', pillar: 'C', tone: BG && BG.loans !== null ? (BG.loans > 0.01 ? 'pos' : BG.loans < -0.01 ? 'neg' : 'neu') : 'neu', score: 62, text: 'Las colocaciones' + (f.loansNet ? ' (netas de provisiones)' : '') + ' suman ' + f$(f.loans) + ', el ' + fp(k.loansTa, 0) + ' de los activos' + (BG && BG.loans !== null ? ', ' + fP(BG.loans) + ' desde el ' + BK.balDate(B, B.prevBal) : '') + (segs.length >= 2 ? ': ' + U.listJoin(segs.map((x) => x[0] + ' ' + fp(x[1] / f.loans, 0))) : '') + '.' });
+      if (BG && segs.length >= 2) {
+        const gs = [['comerciales', BG.loansCom], ['vivienda', BG.loansHome], ['consumo', BG.loansCons]].filter((x) => has(x[1]));
+        if (gs.length) why.C.push('Crecimiento por segmento desde el ' + BK.balDate(B, B.prevBal) + ': ' + U.listJoin(gs.map((x) => x[0] + ' ' + fP(x[1]))) + '.');
+      }
+    }
+    if (has(f.credLoss)) {
+      const hi = has(k.cor) && k.cor > 0.02;
+      const up = G && G.credLoss !== null && G.credLoss > 0.15;
+      // crítico solo con un costo de riesgo muy alto (o alto y subiendo); un alza fuerte desde un nivel normal es atención
+      F({ id: 'BK-cor', pillar: 'C', tone: hi || up ? 'neg' : 'neu', score: (has(k.cor) && k.cor > 0.03) || (hi && up) ? 78 : hi || up ? 70 : 64, text: 'El gasto por pérdidas crediticias es ' + f$(f.credLoss) + (G && G.credLoss !== null ? ' (' + fP(G.credLoss) + ')' : '') + (has(k.cor) ? ': un costo de riesgo de ' + fp(k.cor, 2) + ' de las colocaciones' + annTxt + (k0 && has(k0.cor) ? ' (' + fp(k0.cor, 2) + ' un año antes)' : '') : '') + (has(k.lossToPre) ? '. Se lleva el ' + fp(k.lossToPre, 0) + ' del resultado antes de pérdidas crediticias' : '') + '.' });
+      if (up) why.C.push('El gasto en riesgo de crédito crece más rápido que los ingresos: puede reflejar más morosidad, provisiones más conservadoras o crecimiento en segmentos de mayor riesgo (consumo).');
+    }
+    if (has(f.addProv)) F({ id: 'BK-addprov', pillar: 'C', tone: 'neu', score: 58, text: 'En el período el banco constituyó provisiones adicionales (voluntarias) por ' + f$(f.addProv) + ' antes de impuestos: es un colchón para un eventual deterioro de la cartera, y parte del gasto por pérdidas crediticias no corresponde a pérdidas ya ocurridas.' + (has(k.corCore) ? ' Sin ellas, el costo de riesgo sería ' + fp(k.corCore, 2) + ' en vez de ' + fp(k.cor, 2) + '.' : '') });
+    if (has(f.provSpecial) && has(f.loans)) F({ id: 'BK-special', pillar: 'C', tone: 'pos', score: 42, text: 'Las provisiones especiales por riesgo de crédito acumuladas suman ' + f$(f.provSpecial) + ' (' + fp(k.specialProv, 1) + ' de las colocaciones).' });
+    // D · solvencia, liquidez y rentabilidad
+    if (has(k.roae)) {
+      const vsSys = k.roae - S.roae;
+      F({ id: 'BK-roae', pillar: 'D', tone: vsSys > 0.02 ? 'pos' : vsSys < -0.03 ? 'neg' : 'neu', score: 72, text: 'Rentabilidad sobre patrimonio de ' + fp(k.roae) + annTxt + ' y sobre activos de ' + fp(k.roaa, 2) + '; la referencia del ' + S.label + ' es ' + fp(S.roae) + ' y ' + fp(S.roaa, 2) + '.' + (G && G.ni !== null ? ' La utilidad ' + (G.ni >= 0 ? 'creció ' : 'cayó ') + fp(Math.abs(G.ni)) + ' frente al mismo período del año anterior.' : '') });
+    }
+    if (has(k.eqRatio)) F({ id: 'BK-eq', pillar: 'D', tone: k.eqRatio < 0.07 ? 'neg' : 'neu', score: 60, text: 'El patrimonio (' + f$(f.eq) + ') es el ' + fp(k.eqRatio) + ' de los activos: por cada peso de patrimonio el banco administra ' + fN(k.lev, 1) + ' pesos de activos' + (has(f.capReg) ? ', y tiene además ' + f$(f.capReg) + ' en instrumentos de capital regulatorio (bonos subordinados)' : '') + '.' });
+    if (has(k.ldr)) F({ id: 'BK-ldr', pillar: 'D', tone: k.ldr > 1.4 ? 'neg' : 'neu', score: 55, text: 'Las colocaciones equivalen al ' + fp(k.ldr, 0) + ' de los depósitos' + (has(k.demandShare) ? ' (' + fp(k.demandShare, 0) + ' de los depósitos son a la vista)' : '') + (has(k.wholesaleTl) ? '; el financiamiento con bonos, capital regulatorio y bancos es el ' + fp(k.wholesaleTl, 0) + ' de los pasivos' : '') + '.' });
+    if (has(k.liqTa)) F({ id: 'BK-liq', pillar: 'D', tone: k.liqTa < 0.1 ? 'neg' : 'neu', score: 50, text: 'Efectivo, instrumentos para negociar y disponibles para la venta suman ' + f$(f.liquid) + ', el ' + fp(k.liqTa, 0) + ' de los activos' + (has(k.liqDemand) ? ' y ' + fN(k.liqDemand, 2) + ' veces los depósitos a la vista' : '') + '.' });
+    if (has(k.payout) && k.payout > 0.2) F({ id: 'BK-div', pillar: 'D', tone: 'neu', score: 40, text: 'La provisión para dividendos (' + f$(f.provDiv) + ') equivale al ' + fp(k.payout, 0) + ' de la utilidad del período: es lo que el banco reserva para repartir a sus accionistas.' });
+    // por qué: de dónde sale la rentabilidad (cada $100 de activos) y qué parte del gasto en riesgo es prudencial
+    const avgTa = has(f.ta) ? (B.b0 && has(B.b0.ta) ? (f.ta + B.b0.ta) / 2 : f.ta) : null;
+    const per100 = (x) => (has(x) && avgTa ? (x * B.ann * 100) / avgTa : null);
+    if (has(k.roaa) && has(f.opInc) && avgTa) {
+      const inc = per100(f.opInc);
+      const exp = per100(f.opExp);
+      const loss = per100(f.credLoss);
+      const tax = per100(f.tax);
+      const n2 = (x) => '$ ' + fN(x, 2);
+      const parts = [has(exp) ? n2(exp) + ' en operar' : null, has(loss) ? n2(loss) + ' en riesgo de crédito' : null, has(tax) ? n2(tax) + ' en impuestos' : null].filter(Boolean);
+      why.D.push('De cada $ 100 de activos, el banco genera ' + n2(inc) + ' de ingresos ' + (B.months < 12 ? 'al año' : 'en el año') + (parts.length ? ' y gasta ' + U.listJoin(parts) : '') + ': le quedan ' + n2(k.roaa * 100) + ' (rentabilidad sobre activos).' + (has(k.lev) && has(k.roae) ? ' Con ' + fN(k.lev, 1) + ' pesos de activos por cada peso de patrimonio, eso se convierte en una rentabilidad sobre patrimonio de ' + fp(k.roae) + '.' : ''));
+      if (has(exp)) why.B.push('Los gastos operacionales equivalen a ' + fp(exp / 100, 2) + ' de los activos al año, frente a ingresos de ' + fp(inc / 100, 2) + ': la eficiencia depende tanto de controlar el gasto como de los ingresos que genera cada peso del balance.');
+    }
+    if (has(k.corCore) && has(f.addProv)) why.C.push('Parte del gasto del período es prudencial: ' + f$(f.addProv) + ' de provisiones adicionales que el banco decidió constituir. El resto, ' + fp(k.corCore, 2) + ' de las colocaciones' + annTxt + ', es el costo del riesgo de la cartera propiamente tal.');
+    else if (has(k.lossToPre) && k.lossToPre < 0.3 && has(k.cor) && k.cor < 0.015) why.C.push('El gasto en riesgo de crédito es moderado frente a lo que genera el banco: se lleva el ' + fp(k.lossToPre, 0) + ' del resultado antes de provisiones.');
+
+    // riesgos
+    if (has(k.cor) && (k.cor > 0.018 || (k0 && has(k0.cor) && k.cor > k0.cor * 1.25))) RISK({ id: 'bk-cor', pillar: 'C', title: 'Costo de riesgo al alza', detail: 'Costo de riesgo de ' + fp(k.cor, 2) + ' de las colocaciones' + annTxt + (k0 && has(k0.cor) ? ' (' + fp(k0.cor, 2) + ' un año antes)' : '') + '.', prob: 2, impact: 3, kpi: 'Gasto en pérdidas crediticias / colocaciones', action: 'Seguir la morosidad por segmento y ajustar la originación en los productos con más deterioro.' });
+    if (has(k.readjShare) && k.readjShare > 0.1) RISK({ id: 'bk-infl', pillar: 'A', title: 'Ingresos sensibles a la inflación', detail: 'Los reajustes aportan el ' + fp(k.readjShare, 0) + ' de los ingresos operacionales; con menor inflación ese ingreso baja.', prob: 2, impact: 2, kpi: 'Ingreso neto por reajustes / ingresos', action: 'Revisar el descalce en UF del balance y su sensibilidad a la inflación esperada.' });
+    if (has(k.eff) && (k.eff > 0.55 || (k0 && has(k0.eff) && k.eff > k0.eff + 0.02))) RISK({ id: 'bk-eff', pillar: 'B', title: 'Eficiencia en deterioro', detail: 'Gastos operacionales de ' + fp(k.eff) + ' de los ingresos' + (k0 && has(k0.eff) ? ' (antes ' + fp(k0.eff) + ')' : '') + '.', prob: 2, impact: 2, kpi: 'Índice de eficiencia', action: 'Plan de eficiencia: digitalización, red de sucursales y gastos de administración.' });
+    if (has(k.finShare) && k.finShare > 0.12) RISK({ id: 'bk-fin', pillar: 'A', title: 'Dependencia del resultado financiero', detail: 'El resultado de tesorería y operaciones de mercado es el ' + fp(k.finShare, 0) + ' de los ingresos y es volátil.', prob: 2, impact: 2, kpi: 'Resultado financiero neto / ingresos', action: 'Separar en el seguimiento el resultado recurrente (intereses y comisiones) del de mercado.' });
+    if (has(k.eqRatio) && k.eqRatio < 0.07) RISK({ id: 'bk-cap', pillar: 'D', title: 'Colchón de patrimonio acotado', detail: 'Patrimonio de ' + fp(k.eqRatio) + ' de los activos.', prob: 2, impact: 3, kpi: 'Patrimonio / activos e índice de adecuación de capital', action: 'Retener utilidades o emitir capital regulatorio antes de acelerar el crecimiento de la cartera.' });
+    if (has(k.ldr) && k.ldr > 1.4) RISK({ id: 'bk-ldr', pillar: 'D', title: 'Cartera financiada con fondos mayoristas', detail: 'Colocaciones de ' + fp(k.ldr, 0) + ' de los depósitos.', prob: 2, impact: 2, kpi: 'Colocaciones / depósitos', action: 'Crecer en depósitos de clientes y alargar plazos de la deuda emitida.' });
+    if (has(k.roae) && k.roae < S.roae - 0.04) RISK({ id: 'bk-roe', pillar: 'D', title: 'Rentabilidad bajo el sistema', detail: 'ROAE de ' + fp(k.roae) + ' frente a ' + fp(S.roae) + ' del sistema.', prob: 3, impact: 2, kpi: 'ROAE', action: 'Revisar precios, mezcla de cartera y gastos para cerrar la brecha.' });
+
+    // acciones (lo que un directorio o un analista debería impulsar o pedir)
+    if (has(k.cor) && (k.cor > 0.015 || (G && G.credLoss !== null && G.credLoss > 0.15))) ACT({ pillar: 'C', option: 'margen', prio: 2, short: 'revisar el riesgo de la cartera por segmento', title: 'Revisar el riesgo de la cartera por segmento', detail: 'Pedir la morosidad (90 días y cartera deteriorada) y el gasto en provisiones por segmento (comercial, vivienda y consumo) y ajustar la originación donde el deterioro crezca. El gasto por pérdidas crediticias es ' + f$(f.credLoss) + (has(k.cor) ? ' (' + fp(k.cor, 2) + ' de las colocaciones)' : '') + '.', area: 'Riesgo de crédito', horizon: 30, impact: null, impactText: 'cada 0,1 punto menos de costo de riesgo son ~' + f$(nz(f.loans) * 0.001) + ' al año antes de impuestos', kpi: 'Costo de riesgo mensual por segmento' });
+    if (has(k.eff)) ACT({ pillar: 'B', option: 'eficiencia', prio: k.eff > 0.55 ? 2 : k.eff > 0.45 ? 1 : 0, short: k.eff > 0.5 ? 'bajar el índice de eficiencia' : 'sostener la eficiencia', title: k.eff > 0.5 ? 'Plan de eficiencia' : 'Sostener la eficiencia', detail: 'Controlar que los gastos no crezcan más que los ingresos (hoy ' + fp(k.eff) + ' de eficiencia): digitalización de procesos, red de sucursales y gastos de administración.', area: 'Operaciones', horizon: 60, impact: has(f.opExp) ? f.opExp * B.ann * 0.02 : null, impactText: 'un 2% menos de gastos equivale a ~' + f$(nz(f.opExp) * B.ann * 0.02) + ' al año', kpi: 'Índice de eficiencia mensual' });
+    if (has(k.readjShare) && k.readjShare > 0.08) ACT({ pillar: 'A', option: 'margen', prio: 1, short: 'medir la sensibilidad del margen a la inflación', title: 'Medir la sensibilidad del margen a la inflación', detail: 'Los reajustes aportan ' + f$(f.nir) + ' (' + fp(k.readjShare, 0) + ' de los ingresos). Simular el margen con la inflación esperada para el próximo año y ajustar la posición en UF.', area: 'Finanzas y tesorería', horizon: 60, impact: null, impactText: 'evita sorpresas en el margen cuando baja la inflación', kpi: 'Ingreso neto por reajustes / ingresos' });
+    if (has(k.feeShare)) ACT({ pillar: 'A', option: 'crecimiento', prio: 0, short: 'crecer en comisiones', title: 'Crecer en ingresos por comisiones', detail: 'Las comisiones son el ' + fp(k.feeShare, 0) + ' de los ingresos: medios de pago, seguros, fondos mutuos y servicios transaccionales dan ingresos estables y sin riesgo de crédito.', area: 'Comercial', horizon: 90, impact: has(f.fees) ? f.fees * B.ann * 0.05 : null, impactText: 'un 5% más de comisiones son ~' + f$(nz(f.fees) * B.ann * 0.05) + ' al año', kpi: 'Comisiones netas / ingresos' });
+    if (has(k.ldr) && k.ldr > 1.3) ACT({ pillar: 'D', option: 'eficiencia', prio: 1, short: 'crecer en depósitos', title: 'Crecer en depósitos de clientes', detail: 'Las colocaciones son el ' + fp(k.ldr, 0) + ' de los depósitos: más depósitos a la vista y a plazo de clientes bajan el costo de fondos y la dependencia de bonos.', area: 'Finanzas', horizon: 90, impact: null, impactText: 'menor costo de fondos y más estabilidad', kpi: 'Colocaciones / depósitos' });
+  };
+
+  /* lo que conviene vigilar, de lo más a lo menos grave: { kind, short (para el titular), long (para la complicación) }.
+     Solo entran señales reales: un costo de riesgo o una carga de provisiones normales no son una alerta. */
+  BK.watch = function (B) {
+    const f = B.f;
+    const k = B.k;
+    const k0 = B.k0;
+    const G = B.growth;
+    const S = BK.SYSTEM;
+    const out = [];
+    if (G && G.ni !== null && G.ni < -0.05) out.push({ kind: 'ni', short: 'la utilidad cayó ' + fp(-G.ni, 0), long: 'la utilidad cayó ' + fp(-G.ni, 0) + ' frente al mismo período del año anterior' });
+    if (G && G.credLoss !== null && G.credLoss > 0.15) out.push({ kind: 'credit', short: 'el gasto en riesgo de crédito subió ' + fp(G.credLoss, 0), long: 'el gasto por pérdidas crediticias subió ' + fp(G.credLoss, 0) + (G.opInc !== null ? ', más que los ingresos (' + fP(G.opInc) + ')' : '') });
+    else if (has(k.cor) && (k.cor > 0.018 || (k0 && has(k0.cor) && k.cor > k0.cor * 1.25))) out.push({ kind: 'credit', short: 'un costo de riesgo de ' + fp(k.cor, 2) + ' de las colocaciones', long: 'el costo de riesgo llega a ' + fp(k.cor, 2) + ' de las colocaciones' + (k0 && has(k0.cor) ? ' (' + fp(k0.cor, 2) + ' un año antes)' : '') });
+    else if (has(k.lossToPre) && k.lossToPre > 0.35) out.push({ kind: 'credit', short: 'las pérdidas crediticias se llevan el ' + fp(k.lossToPre, 0) + ' del resultado antes de provisiones', long: 'el gasto por pérdidas crediticias (' + f$(f.credLoss) + ') se lleva el ' + fp(k.lossToPre, 0) + ' del resultado antes de provisiones' });
+    if (has(k.roae) && k.roae < S.roae - 0.02) out.push({ kind: 'roe', short: 'una rentabilidad bajo la del sistema (' + fp(S.roae, 1) + ')', long: 'la rentabilidad sobre patrimonio (' + fp(k.roae, 1) + ') está bajo la del sistema (' + fp(S.roae, 1) + ')' });
+    if (G && G.opExp !== null && G.opInc !== null && G.opExp > G.opInc + 0.02) out.push({ kind: 'cost', short: 'los gastos crecen más que los ingresos', long: 'los gastos crecieron ' + fp(G.opExp, 1) + ', más que los ingresos (' + fP(G.opInc) + ')' });
+    else if (has(k.eff) && k.eff > 0.55) out.push({ kind: 'cost', short: 'una eficiencia baja (' + fp(k.eff, 1) + ')', long: 'los gastos operacionales se llevan el ' + fp(k.eff, 1) + ' de los ingresos' });
+    if (has(k.eqRatio) && k.eqRatio < 0.07) out.push({ kind: 'cap', short: 'un patrimonio de solo ' + fp(k.eqRatio, 1) + ' de los activos', long: 'el patrimonio es apenas el ' + fp(k.eqRatio, 1) + ' de los activos' });
+    if (has(k.ldr) && k.ldr > 1.4) out.push({ kind: 'fund', short: 'colocaciones de ' + fp(k.ldr, 0) + ' de los depósitos', long: 'las colocaciones equivalen al ' + fp(k.ldr, 0) + ' de los depósitos: el resto se financia con bonos y bancos' });
+    if (has(k.readjShare) && k.readjShare > 0.1) out.push({ kind: 'infl', short: 'el ' + fp(k.readjShare, 0) + ' de sus ingresos depende de la inflación (reajustes)', long: 'el ' + fp(k.readjShare, 0) + ' de los ingresos viene de reajustes en UF, que bajan con la inflación' });
+    if (has(k.finShare) && k.finShare > 0.12) out.push({ kind: 'mkt', short: 'el ' + fp(k.finShare, 0) + ' de sus ingresos viene de tesorería, que es volátil', long: 'el ' + fp(k.finShare, 0) + ' de los ingresos viene del resultado financiero (tesorería), que es volátil' });
+    return out;
+  };
+
+  /* mensaje principal de un banco */
+  BK.headline = function (B, company) {
+    const f = B.f;
+    const k = B.k;
+    const G = B.growth;
+    const per = BK.longPeriod(B, B.last);
+    let h = company + ' ganó ' + f$(f.ni) + ' ' + per + (G && G.ni !== null ? ' (' + fP(G.ni) + ')' : '');
+    const bits = [];
+    if (has(k.roae)) bits.push('una rentabilidad sobre patrimonio de ' + fp(k.roae, 1) + (B.months < 12 ? ' anualizada' : '') + ' (sistema: ' + fp(BK.SYSTEM.roae, 1) + ')');
+    if (has(k.eff)) bits.push('una eficiencia de ' + fp(k.eff, 1));
+    if (bits.length) h += ', con ' + U.listJoin(bits);
+    // la caída de la utilidad ya va entre paréntesis en el titular
+    const comps = BK.watch(B).filter((c) => c.kind !== 'ni').slice(0, 2);
+    if (comps.length) h += '; a vigilar: ' + U.listJoin(comps.map((c) => c.short));
+    return h + '.';
+  };
+
+  BK.scqa = function (B, company) {
+    const f = B.f;
+    const per = BK.longPeriod(B, B.last);
+    const s = company + ' es un banco' + (has(f.ta) ? ' con activos por ' + f$(f.ta) + (has(f.loans) ? ' y colocaciones por ' + f$(f.loans) : '') : '') + '. ' + per.charAt(0).toUpperCase() + per.slice(1) + ' generó ingresos operacionales por ' + f$(f.opInc) + ' y una utilidad de ' + f$(f.ni) + '.';
+    const w = BK.watch(B).slice(0, 2);
+    const kinds = w.map((x) => x.kind);
+    const cTxt = w.length ? 'Sin embargo, ' + U.listJoin(w.map((x) => x.long)) + '.' : 'Los indicadores no muestran alertas: el desafío es sostenerlos' + (B.prevInc ? '' : ', y con un solo período todavía no se ve la tendencia') + '.';
+    let q = '¿Qué debe cuidar el banco para sostener su rentabilidad?';
+    if (kinds.includes('ni') && kinds.includes('credit')) q = '¿Cómo contiene el banco el alza del riesgo de crédito para recuperar la utilidad?';
+    else if (kinds.includes('infl') && kinds.includes('credit')) q = '¿Puede el banco sostener su rentabilidad si baja la inflación y sube el riesgo de crédito?';
+    else if (kinds[0] === 'credit') q = '¿Está el banco preparado para un ciclo de crédito más difícil sin perder rentabilidad?';
+    else if (kinds[0] === 'roe') q = '¿Qué palancas devuelven la rentabilidad del banco al nivel del sistema?';
+    else if (kinds[0] === 'ni') q = '¿Qué explica la caída de la utilidad y cómo se recupera?';
+    else if (kinds[0] === 'cost') q = '¿Cómo recupera el banco su eficiencia sin frenar el crecimiento?';
+    else if (kinds[0] === 'cap' || kinds[0] === 'fund') q = '¿Tiene el banco el capital y el financiamiento para seguir creciendo?';
+    else if (kinds[0] === 'infl') q = '¿Puede el banco sostener su rentabilidad cuando baje la inflación?';
+    else if (kinds[0] === 'mkt') q = '¿Cuánto de la utilidad es recurrente y cuánto depende de la tesorería?';
+    return { s, c: cTxt, q };
+  };
+
+  /* informe del analista (mismo formato que el informe del consultor) */
+  BK.memo = function (B, rep, company) {
+    const f = B.f;
+    const k = B.k;
+    const k0 = B.k0;
+    const G = B.growth;
+    const BG = B.balG;
+    const per = BK.longPeriod(B, B.last);
+    const annTxt = B.months < 12 ? ' anualizado' : '';
+    const secs = [];
+    const Sx = (h, ps) => ps.filter(Boolean).length && secs.push({ h, p: ps.filter(Boolean) });
+    const acts = (rep.actions || []).slice(0, 3).map((a) => a.short || a.title.charAt(0).toLowerCase() + a.title.slice(1));
+    Sx('1. Conclusión', [BK.headline(B, company), acts.length ? 'Lo que recomendamos priorizar: ' + U.listJoin(acts) + '.' : null]);
+    // 2. resultados
+    const r = [];
+    if (has(f.opInc)) {
+      const parts = [['margen de intereses', f.nii], ['reajustes', f.nir], ['comisiones', f.fees], ['resultado financiero', f.finRes], ['otros', nz(f.otherInc) + nz(f.invRes)]].filter((x) => has(x[1]) && x[1] > 0);
+      r.push('Los ingresos operacionales ' + per + ' suman ' + f$(f.opInc) + (G && G.opInc !== null ? ' (' + fP(G.opInc) + ' frente al mismo período del año anterior)' : '') + ': ' + U.listJoin(parts.map((x) => x[0] + ' ' + f$(x[1]) + ' (' + fp(x[1] / f.opInc, 0) + ')')) + '.');
+    }
+    if (has(f.opExp)) r.push('Los gastos operacionales son ' + f$(f.opExp) + ', una eficiencia de ' + fp(k.eff) + (k0 && has(k0.eff) ? ' (' + fp(k0.eff) + ' un año antes)' : '') + '. Queda un resultado antes de pérdidas crediticias de ' + f$(f.preProv) + '.');
+    if (has(f.credLoss)) r.push('El gasto por pérdidas crediticias es ' + f$(f.credLoss) + (G && G.credLoss !== null ? ' (' + fP(G.credLoss) + ')' : '') + (has(k.lossToPre) ? ', el ' + fp(k.lossToPre, 0) + ' del resultado antes de provisiones' : '') + (has(f.addProv) ? '; incluye ' + f$(f.addProv) + ' de provisiones adicionales (voluntarias), que son un colchón y no pérdidas ya ocurridas' : '') + '.');
+    if (has(f.ni)) r.push('La utilidad es ' + f$(f.ni) + (G && G.ni !== null ? ' (' + fP(G.ni) + ')' : '') + (has(k.taxRate) ? ', después de un impuesto a la renta de ' + f$(f.tax) + ' (tasa efectiva de ' + fp(k.taxRate, 0) + ')' : '') + '.');
+    Sx('2. Qué pasó en los resultados', r);
+    // 3. balance
+    const b = [];
+    if (has(f.ta)) b.push('Al ' + BK.balDate(B, B.last) + ' los activos suman ' + f$(f.ta) + (BG && BG.ta !== null ? ' (' + fP(BG.ta) + ' desde el ' + BK.balDate(B, B.prevBal) + ')' : '') + (has(f.loans) ? '; las colocaciones' + (f.loansNet ? ' netas de provisiones' : '') + ' son ' + f$(f.loans) + ' (' + fp(k.loansTa, 0) + ' del activo)' : '') + (has(f.liquid) && f.liquid > 0 ? ' y los activos líquidos (efectivo e instrumentos financieros para negociar o disponibles) ' + f$(f.liquid) + ' (' + fp(k.liqTa, 0) + ')' : '') + '.');
+    if (has(f.deposits)) b.push('Se financian con depósitos por ' + f$(f.deposits) + ' (' + fp(k.demandShare, 0) + ' a la vista)' + (has(k.wholesaleTl) ? ', y con bonos, capital regulatorio y obligaciones con bancos por ' + f$(f.wholesale) + ' (' + fp(k.wholesaleTl, 0) + ' de los pasivos)' : '') + '. Las colocaciones equivalen al ' + fp(k.ldr, 0) + ' de los depósitos.');
+    else if (has(f.amortL)) b.push('Los pasivos financieros a costo amortizado (depósitos, bonos y obligaciones con bancos) suman ' + f$(f.amortL) + ', el ' + fp(div(f.amortL, f.tl), 0) + ' de los pasivos. Este estado resumido no separa los depósitos a la vista y a plazo.');
+    Sx('3. Balance y financiamiento', b);
+    // 4. riesgo de crédito
+    const c = [];
+    if (has(k.cor)) c.push('El costo de riesgo es ' + fp(k.cor, 2) + ' de las colocaciones' + annTxt + (k0 && has(k0.cor) ? ' (' + fp(k0.cor, 2) + ' un año antes)' : '') + (has(k.corCore) ? '; sin las provisiones adicionales (' + f$(f.addProv) + ') sería ' + fp(k.corCore, 2) : '') + '.');
+    if (has(f.provSpecial)) c.push('Las provisiones especiales por riesgo de crédito acumuladas suman ' + f$(f.provSpecial) + (has(k.specialProv) ? ' (' + fp(k.specialProv, 1) + ' de las colocaciones)' : '') + ': un respaldo adicional frente a un deterioro de la cartera.');
+    c.push('Para evaluar la calidad de la cartera faltan la morosidad de 90 días y la cartera deteriorada por segmento (en las notas a los estados financieros o en los reportes de la CMF). Referencia del sistema: morosidad de 90 días de ' + fp(BK.SYSTEM.npl90, 2) + ' y provisiones de ' + fp(BK.SYSTEM.provRatio, 2) + ' de las colocaciones (' + BK.SYSTEM.label + ').');
+    Sx('4. Riesgo de crédito', c);
+    // 5. solvencia, liquidez y rentabilidad
+    const s = [];
+    if (has(k.roae)) s.push('La rentabilidad sobre patrimonio es ' + fp(k.roae) + annTxt + ' y sobre activos ' + fp(k.roaa, 2) + ', frente a ' + fp(BK.SYSTEM.roae) + ' y ' + fp(BK.SYSTEM.roaa, 2) + ' del ' + BK.SYSTEM.label + '.');
+    if (has(k.eqRatio)) s.push('El patrimonio es ' + f$(f.eq) + ', el ' + fp(k.eqRatio) + ' de los activos (' + fN(k.lev, 1) + ' veces de apalancamiento)' + (has(f.capReg) ? ', más ' + f$(f.capReg) + ' en instrumentos de capital regulatorio' : '') + '. El índice de adecuación de capital regulatorio (Basilea III) no está en estos estados: pídelo en las notas o en los reportes de la CMF.');
+    if (has(k.payout)) s.push('La provisión para dividendos es ' + f$(f.provDiv) + ', el ' + fp(k.payout, 0) + ' de la utilidad del período.');
+    Sx('5. Solvencia, liquidez y rentabilidad', s);
+    // 6. riesgos
+    const rk = (rep.risks || []).slice(0, 4);
+    if (rk.length) Sx('6. Qué vigilar', rk.map((x, i) => i + 1 + ') ' + x.title + '. ' + x.detail + (x.action ? ' Qué hacer: ' + x.action.charAt(0).toLowerCase() + x.action.slice(1) : '')));
+    const recs = (rep.actions || []).slice(0, 5).map((a, i) => i + 1 + ') ' + a.title + ' (' + a.horizon + ' días, ' + a.area.toLowerCase() + '). ' + a.detail + (a.impactText ? ' Efecto esperado: ' + a.impactText + '.' : ''));
+    if (recs.length) Sx('7. Prioridades de gestión', recs);
+    const lim = [];
+    lim.push(B.prevInc || B.prevBal ? 'Comparaciones: resultados de ' + B.last + (B.prevInc ? ' frente a ' + B.prevInc : '') + (B.prevBal ? '; balance al ' + BK.balDate(B, B.last) + ' frente al ' + BK.balDate(B, B.prevBal) : '') + '.' : 'Los estados traen un solo período: para ver tendencias, carga también los estados del mismo mes del año anterior (y los de diciembre para comparar el balance).');
+    if (B.months < 12) lim.push('Los indicadores de rentabilidad y costo de riesgo se anualizan (× ' + fN(12 / B.months, 2) + ') y usan saldos de cierre cuando no hay un balance anterior para promediar.');
+    lim.push('No se proyectan escenarios para bancos: sus resultados dependen de tasas, inflación y riesgo de crédito, que requieren supuestos propios.');
+    Sx('8. Límites de este análisis', lim);
+    return { title: 'Informe del analista', subtitle: company + ' · ' + B.last + (B.prevInc ? ' comparado con ' + B.prevInc : ''), sections: secs, adjusted: null };
+  };
+
+  /* partidas principales para las tablas de estados (mismo formato que los estados comparativos) */
+  const BAL_LINES = [
+    ['h', 'Activos'], ['cash', 'Efectivo y depósitos en bancos'], ['trading', 'Activos financieros para negociar'], ['fvoci', 'Activos financieros disponibles (valor razonable con cambios en ORI)'], ['amortA', 'Activos financieros a costo amortizado'], ['loans', '   de ellos, colocaciones a clientes'], ['loansCom', '   · comerciales'], ['loansHome', '   · vivienda'], ['loansCons', '   · consumo'], ['otherA', 'Otros activos'], ['ta', 'TOTAL ACTIVOS', 2],
+    ['h', 'Pasivos'], ['demand', 'Depósitos a la vista'], ['time', 'Depósitos a plazo'], ['bonds', 'Instrumentos de deuda emitidos'], ['bankDebt', 'Obligaciones con bancos'], ['amortL', 'Pasivos financieros a costo amortizado'], ['capReg', 'Capital regulatorio emitido (subordinados)'], ['provSpecial', 'Provisiones especiales por riesgo de crédito'], ['provDiv', 'Provisión para dividendos'], ['tl', 'TOTAL PASIVOS', 2],
+    ['h', 'Patrimonio'], ['cap', 'Capital'], ['niBal', 'Utilidad del período'], ['eq', 'TOTAL PATRIMONIO', 1],
+  ];
+  const INC_LINES = [
+    ['nii', 'Ingreso neto por intereses'], ['nir', 'Ingreso neto por reajustes'], ['fees', 'Ingreso neto por comisiones'], ['finRes', 'Resultado financiero neto'], ['otherInc', 'Otros ingresos'], ['opInc', 'TOTAL INGRESOS OPERACIONALES', 1],
+    ['staff', 'Beneficios a empleados', 0, -1], ['adm', 'Gastos de administración', 0, -1], ['depam', 'Depreciación y amortización', 0, -1], ['opExp', 'Total gastos operacionales', 1, -1],
+    ['preProv', 'Resultado antes de pérdidas crediticias', 1], ['credLoss', 'Gasto por pérdidas crediticias', 0, -1], ['opRes', 'Resultado operacional', 1], ['tax', 'Impuesto a la renta', 0, -1], ['ni', 'UTILIDAD DEL PERÍODO', 2],
+  ];
+  BK.statementTable = function (B, kind) {
+    const ps = (kind === 'bal' ? [B.prevBal, B.last] : [B.prevInc, B.last]).filter(Boolean);
+    const lines = kind === 'bal' ? BAL_LINES : INC_LINES;
+    const rows = [];
+    lines.forEach(([k, l, lvl, sign]) => {
+      if (k === 'h') return rows.push({ k: 'h', l, head: true });
+      const vals = {};
+      let any = false;
+      ps.forEach((p) => {
+        const v = B.fig[p] ? B.fig[p][k] : null;
+        vals[p] = has(v) ? v : null;
+        if (has(v) && Math.abs(v) > 0.5) any = true;
+      });
+      if (!any) return;
+      const row = { k, l: l.trim(), lvl: lvl || (/^\s/.test(l) ? 3 : 0), sign: sign || 1, vals, vpct: {} };
+      ps.forEach((p) => {
+        const base = kind === 'bal' ? B.fig[p].ta : B.fig[p].opInc;
+        row.vpct[p] = has(vals[p]) && base ? vals[p] / base : null;
+      });
+      if (ps.length > 1) {
+        const a = vals[ps[1]];
+        const b = vals[ps[0]];
+        row.dPct = has(a) && has(b) && Math.abs(b) > 0.5 ? (a - b) / Math.abs(b) : null;
+      }
+      rows.push(row);
+    });
+    // el balance es una foto a una fecha: sus columnas se titulan con la fecha de cierre
+    const labels = {};
+    ps.forEach((p) => (labels[p] = kind === 'bal' ? BK.shortDate(B, p) : p));
+    return { rows, periods: ps, labels, base: kind === 'bal' ? 'activo' : 'ingresos' };
+  };
+
+  /* evidencia (gráficos y tablas) de un banco */
+  BK.exhibits = function (B, ex) {
+    const f = B.f;
+    const i0 = B.i0;
+    const k = B.k;
+    const cats = [['Margen de intereses', 'nii'], ['Reajustes', 'nir'], ['Comisiones', 'fees'], ['Resultado financiero', 'finRes'], ['Otros', 'otherInc']].filter((x) => has(f[x[1]]));
+    if (cats.length >= 2) ex('A', { kind: 'chart', title: 'De dónde vienen los ingresos operacionales' + (i0 ? ': ' + B.last + ' vs ' + B.prevInc : ' (' + B.last + ')'), caption: 'Ingresos netos de cada fuente.', spec: { type: 'bars', orientation: 'h', categories: cats.map((x) => x[0]), series: [{ name: B.last, role: 'cur', values: cats.map((x) => f[x[1]]) }].concat(i0 ? [{ name: B.prevInc, role: 'prev', values: cats.map((x) => i0[x[1]] || 0) }] : []), format: 'money', note: cats.map((x) => fp(f[x[1]] / f.opInc, 0)) } });
+    ex('A', { kind: 'statements', title: 'Estado de resultados' + (B.prevInc ? ' comparativo' : ''), caption: 'Partidas principales y su peso sobre los ingresos operacionales.', data: BK.statementTable(B, 'inc') });
+    const steps = [];
+    if (has(f.opInc)) {
+      steps.push({ label: 'Ingresos operacionales', value: f.opInc, kind: 'total' });
+      if (has(f.opExp)) steps.push({ label: 'Gastos operacionales', value: -f.opExp, kind: 'delta' });
+      if (has(f.credLoss)) steps.push({ label: 'Pérdidas crediticias', value: -f.credLoss, kind: 'delta' });
+      const other = nz(f.ni) - (f.opInc - nz(f.opExp) - nz(f.credLoss) - nz(f.tax));
+      if (has(f.tax)) steps.push({ label: 'Impuesto a la renta', value: -f.tax, kind: 'delta' });
+      if (Math.abs(other) > Math.abs(f.opInc) * 0.002) steps.push({ label: 'Otros', value: other, kind: 'delta' });
+      if (has(f.ni)) steps.push({ label: 'Utilidad', value: f.ni, kind: 'total' });
+      if (steps.length >= 4) ex('B', { kind: 'chart', title: 'De los ingresos a la utilidad (' + B.last + ')', caption: 'Cuánto de cada peso de ingreso se va en gastos, riesgo de crédito e impuestos.', spec: { type: 'waterfall', steps, format: 'money' } });
+    }
+    const segs = [['Comerciales', 'loansCom'], ['Vivienda', 'loansHome'], ['Consumo', 'loansCons']].filter((x) => has(f[x[1]]));
+    // costo del riesgo de crédito (cuando el estado no trae la cartera por segmento, es la evidencia del pilar C)
+    const cr = [];
+    if (has(f.credLoss)) cr.push({ l: 'Gasto por pérdidas crediticias del período', v: f$(f.credLoss) });
+    if (has(f.addProv)) cr.push({ l: 'de ello, provisiones adicionales (voluntarias)', v: f$(f.addProv) });
+    if (has(k.cor)) cr.push({ l: 'Costo de riesgo' + (B.months < 12 ? ' (anualizado)' : ''), v: fp(k.cor, 2) });
+    if (has(k.corCore)) cr.push({ l: 'Costo de riesgo sin provisiones adicionales', v: fp(k.corCore, 2) });
+    if (has(k.lossToPre)) cr.push({ l: 'Pérdidas crediticias / resultado antes de provisiones', v: fp(k.lossToPre, 1) });
+    if (has(f.provSpecial)) cr.push({ l: 'Provisiones especiales acumuladas (en el balance)', v: f$(f.provSpecial) + (has(k.specialProv) ? ' · ' + fp(k.specialProv, 1) + ' de las colocaciones' : '') });
+    if (cr.length >= 3) ex('C', { kind: 'table', title: 'Costo del riesgo de crédito (' + B.last + ')', caption: 'La morosidad y la cartera deteriorada no vienen en estos estados (están en las notas o en los reportes de la CMF). Referencia del ' + BK.SYSTEM.label + ': morosidad de 90 días ' + fp(BK.SYSTEM.npl90, 2) + ' y provisiones ' + fp(BK.SYSTEM.provRatio, 2) + ' de las colocaciones.', columns: [{ k: 'l', l: 'Concepto' }, { k: 'v', l: B.last, f: 'txtR' }], rows: cr });
+    if (segs.length >= 2) ex('C', { kind: 'chart', title: 'Colocaciones por segmento' + (B.b0 ? ': ' + BK.balDate(B, B.last) + ' vs ' + BK.balDate(B, B.prevBal) : ''), caption: 'Créditos y cuentas por cobrar a clientes.', spec: { type: 'bars', orientation: 'h', categories: segs.map((x) => x[0]), series: [{ name: BK.balDate(B, B.last), role: 'cur', values: segs.map((x) => f[x[1]]) }].concat(B.b0 ? [{ name: BK.balDate(B, B.prevBal), role: 'prev', values: segs.map((x) => B.b0[x[1]] || 0) }] : []), format: 'money' } });
+    ex('D', { kind: 'statements', title: 'Estado de situación financiera' + (B.prevBal ? ' comparativo' : ''), caption: 'Partidas principales y su peso sobre el activo total.', data: BK.statementTable(B, 'bal') });
+    const S = BK.SYSTEM;
+    const k0 = B.k0;
+    const row = (l, v, v0, ref, fmt) => ({ l, v: v === null || v === undefined ? '–' : fmt(v), v0: v0 === null || v0 === undefined ? '–' : fmt(v0), ref: ref || '–' });
+    const pct1 = (x) => fp(x, 1);
+    const pct2 = (x) => fp(x, 2);
+    const rows = [
+      row('Rentabilidad sobre patrimonio (ROAE' + (B.months < 12 ? ', anualizada' : '') + ')', k.roae, k0 && k0.roae, fp(S.roae, 1), pct1),
+      row('Rentabilidad sobre activos (ROAA' + (B.months < 12 ? ', anualizada' : '') + ')', k.roaa, k0 && k0.roaa, fp(S.roaa, 2), pct2),
+      row('Eficiencia (gastos / ingresos operacionales)', k.eff, k0 && k0.eff, 'más bajo es mejor', pct1),
+      row('Margen de intereses y reajustes / activos', k.nim, k0 && k0.nim, null, pct2),
+      row('Comisiones / ingresos operacionales', k.feeShare, k0 && k0.feeShare, null, pct1),
+      row('Costo de riesgo (pérdidas crediticias / colocaciones)', k.cor, k0 && k0.cor, null, pct2),
+      row('Pérdidas crediticias / resultado antes de provisiones', k.lossToPre, k0 && k0.lossToPre, null, pct1),
+      row('Patrimonio / activos', k.eqRatio, null, null, pct1),
+      row('Colocaciones / depósitos', k.ldr, null, null, pct1),
+      row('Activos líquidos / activos', k.liqTa, null, null, pct1),
+    ].filter((r) => r.v !== '–');
+    ex('D', { kind: 'table', title: 'Indicadores del banco', caption: 'Referencia: ' + S.label + '. Los indicadores de rentabilidad y riesgo del período se anualizan.', columns: [{ k: 'l', l: 'Indicador' }, { k: 'v', l: B.last, f: 'txtR' }].concat(B.k0 ? [{ k: 'v0', l: B.prevInc, f: 'txtR' }] : []).concat([{ k: 'ref', l: 'Sistema bancario', f: 'txtR' }]), rows });
+  };
+
+  /* respuesta de cada pilar (una línea) */
+  BK.heads = function (B) {
+    const f = B.f;
+    const k = B.k;
+    const k0 = B.k0;
+    const G = B.growth;
+    const out = {};
+    const parts = [['el margen de intereses', f.nii], ['los reajustes', f.nir], ['las comisiones', f.fees]].filter((x) => has(x[1]) && x[1] > 0).sort((a, b) => b[1] - a[1]);
+    out.A = 'Los ingresos operacionales suman ' + f$(f.opInc) + (G && G.opInc !== null ? ' (' + fP(G.opInc) + ')' : '') + (parts.length ? '; ' + parts[0][0] + ' aporta el ' + fp(parts[0][1] / f.opInc, 0) + (parts[1] ? ' y ' + parts[1][0] + ' el ' + fp(parts[1][1] / f.opInc, 0) : '') : '') + '.';
+    out.B = has(k.eff) ? 'Los gastos operacionales son el ' + fp(k.eff) + ' de los ingresos' + (k0 && has(k0.eff) ? ' (' + fp(k0.eff) + ' un año antes)' : '') + (k.eff < 0.45 ? ': un banco muy eficiente.' : k.eff > 0.55 ? ': la eficiencia es baja.' : '.') : 'No hay gastos operacionales para medir la eficiencia.';
+    out.C = has(f.credLoss) ? 'El gasto por pérdidas crediticias es ' + f$(f.credLoss) + (has(k.cor) ? ', un costo de riesgo de ' + fp(k.cor, 2) + ' de las colocaciones' + (B.months < 12 ? ' (anualizado)' : '') : '') + (has(k.lossToPre) ? ' que se lleva el ' + fp(k.lossToPre, 0) + ' del resultado antes de provisiones' : '') + '.' : 'No hay gasto por pérdidas crediticias en los estados cargados.';
+    const d = [];
+    if (has(k.roae)) d.push('rentabilidad sobre patrimonio de ' + fp(k.roae, 1) + ' (sistema ' + fp(BK.SYSTEM.roae, 1) + ')');
+    if (has(k.eqRatio)) d.push('patrimonio de ' + fp(k.eqRatio, 1) + ' de los activos');
+    if (has(k.liqTa)) d.push('activos líquidos de ' + fp(k.liqTa, 0) + ' del balance');
+    out.D = d.length ? d.join('; ').replace(/^./, (c) => c.toUpperCase()) + '.' : 'Faltan el balance o el patrimonio para medir la solvencia.';
+    return out;
+  };
+  BK.OPTIONS = [
+    { key: 'margen', name: 'Cuidar el margen y el riesgo', idea: 'Riesgo de crédito y sensibilidad a la inflación: ajustar la originación por segmento y la posición en UF.', pros: ['Protege la utilidad frente a un ciclo de crédito peor', 'Se mide mes a mes'], cons: ['Puede frenar el crecimiento de la cartera', 'Requiere información de morosidad por segmento'] },
+    { key: 'crecimiento', name: 'Crecer en ingresos estables', idea: 'Comisiones y depósitos de clientes: ingresos que no dependen de la tasa ni del riesgo de crédito.', pros: ['Ingresos recurrentes y sin riesgo de crédito', 'Mejora la rentabilidad sobre patrimonio'], cons: ['Resultados en plazos más largos', 'Exige inversión comercial y tecnológica'] },
+    { key: 'eficiencia', name: 'Eficiencia y financiamiento', idea: 'Gastos y estructura de fondos: sostener la eficiencia y financiar la cartera con depósitos de clientes.', pros: ['Baja el costo de fondos y de operar', 'Libera capital para crecer'], cons: ['Los ahorros de gasto toman tiempo en verse', 'Competir por depósitos puede subir su costo'] },
+  ];
+  BK.monitor = function (B) {
+    const k = B.k;
+    const m = [];
+    if (has(k.roae)) m.push({ kpi: 'Rentabilidad sobre patrimonio (ROAE)', now: fp(k.roae, 1), target: '≥ ' + fp(BK.SYSTEM.roae, 1) + ' (sistema)', freq: 'Mensual' });
+    if (has(k.eff)) m.push({ kpi: 'Eficiencia (gastos / ingresos operacionales)', now: fp(k.eff, 1), target: '≤ ' + fp(k.eff, 1), freq: 'Mensual' });
+    if (has(k.cor)) m.push({ kpi: 'Costo de riesgo', now: fp(k.cor, 2), target: '≤ ' + fp(k.cor, 2), freq: 'Mensual' });
+    if (has(k.ldr)) m.push({ kpi: 'Colocaciones / depósitos', now: fp(k.ldr, 0), target: '≤ ' + fp(Math.max(1, k.ldr), 0), freq: 'Mensual' });
+    if (has(k.eqRatio)) m.push({ kpi: 'Patrimonio / activos', now: fp(k.eqRatio, 1), target: '≥ ' + fp(k.eqRatio, 1), freq: 'Mensual' });
+    return m;
+  };
+  BK.methodology = function (B) {
+    return [
+      'Banco (formato de la CMF): los indicadores de la banca reemplazan a los de una empresa comercial. Eficiencia = gastos operacionales / ingresos operacionales. Costo de riesgo = gasto por pérdidas crediticias / colocaciones. Margen de intereses y reajustes sobre los activos totales.',
+      'Rentabilidad: ROAE = utilidad atribuible a los propietarios / patrimonio promedio; ROAA = utilidad / activos promedio. En períodos de menos de 12 meses se anualiza (× ' + fN(12 / B.months, 2) + '); sin un balance anterior se usan los saldos de cierre.',
+      'Referencia del sistema: ' + BK.SYSTEM.label + ' (ROAE ' + fp(BK.SYSTEM.roae, 2) + ', ROAA ' + fp(BK.SYSTEM.roaa, 2) + ', provisiones ' + fp(BK.SYSTEM.provRatio, 2) + ' y morosidad de 90 días ' + fp(BK.SYSTEM.npl90, 2) + ' de las colocaciones).',
+    ];
+  };
+
+  /* KPIs del encabezado */
+  BK.kpis = function (B, tile) {
+    const f = B.f;
+    const k = B.k;
+    const k0 = B.k0;
+    const G = B.growth;
+    tile('ni', 'Utilidad del período', f.ni, 'money', G ? G.ni : null, 'pct', G && G.ni !== null ? G.ni >= 0 : null, B.last);
+    tile('opInc', 'Ingresos operacionales', f.opInc, 'money', G ? G.opInc : null, 'pct', G && G.opInc !== null ? G.opInc >= 0 : null, has(k.feeShare) ? 'comisiones ' + fp(k.feeShare, 0) + ' del total' : '');
+    if (has(k.roae)) tile('roae', 'Rentabilidad sobre patrimonio', k.roae, 'pct', k0 && has(k0.roae) ? k.roae - k0.roae : null, 'pp', k0 && has(k0.roae) ? k.roae >= k0.roae : k.roae >= BK.SYSTEM.roae, (B.months < 12 ? 'anualizada · ' : '') + 'sistema ' + fp(BK.SYSTEM.roae, 1));
+    if (has(k.eff)) tile('eff', 'Eficiencia', k.eff, 'pct', k0 && has(k0.eff) ? k.eff - k0.eff : null, 'pp', k0 && has(k0.eff) ? k.eff <= k0.eff : k.eff <= 0.5, 'gastos / ingresos operacionales');
+    if (has(k.cor)) tile('cor', 'Costo de riesgo', k.cor, 'pct2', k0 && has(k0.cor) ? k.cor - k0.cor : null, 'pp', k0 && has(k0.cor) ? k.cor <= k0.cor : null, 'pérdidas crediticias / colocaciones' + (B.months < 12 ? ' (anual)' : ''));
+    if (has(f.loans)) tile('loans', 'Colocaciones', f.loans, 'money', B.balG ? B.balG.loans : null, 'pct', B.balG && B.balG.loans !== null ? B.balG.loans >= 0 : null, fp(k.loansTa, 0) + ' del activo');
+    if (has(f.eq)) tile('eq', 'Patrimonio', f.eq, 'money', B.balG ? B.balG.eq : null, 'pct', B.balG && B.balG.eq !== null ? B.balG.eq >= 0 : null, fp(k.eqRatio, 1) + ' del activo');
+    if (has(f.ta)) tile('ta', 'Activos totales', f.ta, 'money', B.balG ? B.balG.ta : null, 'pct', null, 'al ' + BK.balDate(B, B.last));
+  };
+})(typeof globalThis !== 'undefined' ? (globalThis.V = globalThis.V || {}) : (window.V = window.V || {}));
+
 /* ==== 08_insights.js ==== */
 /* Vértice · motor de reglas: convierte el análisis en un reporte piramidal (Minto) con argumentos MECE,
    causas, riesgos, alternativas de decisión y plan de acción. */
@@ -8590,6 +9497,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const texts = ctx.texts || [];
     const company = ctx.company || 'La empresa';
     const FIN = ctx.fin || null;
+    const BKA = ctx.bank || null; // estados financieros de un banco
     const curL = P.cur ? P.cur.label : '';
     const prevL = P.prev ? P.prev.label : '';
     const findings = [];
@@ -8621,7 +9529,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         benchSource: V.I.BENCH_SOURCE,
         benchNote: V.I.BENCH_NOTE,
         sources: ctx.sources || [],
-        range: model.meta.fromStatements && FIN ? 'estados financieros ' + (FIN.periods.length > 1 ? FIN.periods[0] + ' a ' + FIN.last : FIN.last) + (FIN.fromLedger ? ' (balance de 8 columnas)' : '') : model.meta.minDay !== null ? U.fmtDate(model.meta.minDay) + ' al ' + U.fmtDate(model.meta.maxDay) : '',
+        range: BKA ? 'estados financieros de un banco, ' + BKA.last + (BKA.prevInc ? ' y ' + BKA.prevInc : '') : model.meta.fromStatements && FIN ? 'estados financieros ' + (FIN.periods.length > 1 ? FIN.periods[0] + ' a ' + FIN.last : FIN.last) + (FIN.fromLedger ? ' (balance de 8 columnas)' : '') : model.meta.minDay !== null ? U.fmtDate(model.meta.minDay) + ' al ' + U.fmtDate(model.meta.maxDay) : '',
         demo: !!ctx.demo,
       },
     };
@@ -8654,6 +9562,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       tile('eq', 'Patrimonio', g1.eq, 'money', g0 && g0.eq ? (g1.eq - g0.eq) / Math.abs(g0.eq) : null, 'pct', g0 ? g1.eq >= g0.eq : null, fp(FIN.k[FIN.last].eqRatio, 0) + ' del activo · pasivo ' + f$(g1.tl));
     }
     rep.kpis = kpis;
+    if (BKA) {
+      kpis.length = 0;
+      V.BK.kpis(BKA, tile);
+    }
 
     /* ================= A · Ingresos y mercado ================= */
     const prods = R.products.filter((x) => x.rev1 > 0);
@@ -9083,7 +9995,13 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         h = 'El resultado operacional ' + verb(d.ebit ? d.ebit.pct : 0, 'subió ' + fA(d.ebit ? d.ebit.pct : 0), 'cayó ' + fA(d.ebit ? d.ebit.pct : 0), 'se mantuvo') + ' porque ' + (dpp < -0.005 ? 'el margen bruto bajó ' + fPP(dpp).replace('−', '') : dpp > 0.005 ? 'el margen bruto subió ' + fPP(dpp).replace('+', '') : 'el margen bruto se mantuvo') + (E && E.dPct !== null && E.revG !== null && E.dPct > E.revG + 0.01 ? ' y los gastos crecieron ' + fA(E.dPct) + ', más que las ventas' : '');
       } else if (c.gm !== null && p && p.gm !== null) h = 'El margen bruto ' + verb(c.gm - p.gm, 'subió', 'bajó') + ' a ' + fp(c.gm) + ' (' + fPP(c.gm - p.gm) + ')';
       else if (E) h = 'Los gastos operacionales suman ' + f$(E.total1) + ' (' + fp(E.ratio1) + ' de las ventas)';
-      else h = 'Sin costos ni gastos cargados no se puede evaluar el margen';
+      else if (FIN && FIN.hasIncome && FIN.periods.some((q) => FIN.fig[q].cogs > 0 && FIN.k[q] && FIN.k[q].gm !== null && FIN.k[q].gm !== undefined)) {
+        // las ventas del período no traen costos (F29, libro de ventas): el margen sale de los estados financieros
+        const pm = FIN.periods.filter((q) => FIN.fig[q].cogs > 0 && FIN.k[q] && FIN.k[q].gm !== null && FIN.k[q].gm !== undefined);
+        const q1 = pm[pm.length - 1];
+        const q0 = pm.length > 1 ? pm[pm.length - 2] : null;
+        h = 'Según los estados financieros, el margen bruto ' + (q0 ? verb(FIN.k[q1].gm - FIN.k[q0].gm, 'subió', 'bajó', 'se mantuvo') + ' de ' + fp(FIN.k[q0].gm) + ' en ' + q0 + ' a ' + fp(FIN.k[q1].gm) + ' en ' + q1 : 'de ' + q1 + ' fue ' + fp(FIN.k[q1].gm)) + (FIN.audit.some((x) => x.id === 'no-cogs') ? '; ' + FIN.last + ' no tiene costo de ventas registrado' : '');
+      } else h = 'Sin costos ni gastos cargados no se puede evaluar el margen';
       heads.B = h + '.';
     }
     // C
@@ -9122,8 +10040,11 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         if (kq.liq !== null) bits.push('la liquidez corriente es ' + fN(kq.liq, 2));
         if (q.eq > 0 && kq.eqRatio !== null && kq.eqRatio < 0.3) bits.push('el patrimonio es apenas el ' + fp(kq.eqRatio, 0) + ' del activo');
         else if (q.eq <= 0) bits.push('el patrimonio es negativo');
-        if (kq.z) bits.push('el Z″ de Altman está en zona ' + kq.z.zone + ' (' + fN(kq.z.z, 2) + ')');
-        const weak = sup || (kq.liq !== null && kq.liq < 1) || q.eq <= 0 || (kq.z && kq.z.zone !== 'segura');
+        // sin costo de ventas en el último período, su Z″ está inflado: se usa el del período anterior
+        const kp = FIN.prev ? FIN.k[FIN.prev] : null;
+        const zRef = FIN.audit.some((a) => a.id === 'no-cogs') && kp && kp.z ? { z: kp.z, p: FIN.prev } : kq.z ? { z: kq.z, p: null } : null;
+        if (zRef) bits.push('el Z″ de Altman ' + (zRef.p ? 'de ' + zRef.p + ' ' : '') + 'está en zona ' + zRef.z.zone + ' (' + fN(zRef.z.z, 2) + ')');
+        const weak = sup || (kq.liq !== null && kq.liq < 1) || q.eq <= 0 || (zRef && zRef.z.zone !== 'segura');
         if (bits.length) h = (weak ? 'Solvencia frágil: ' : 'Posición financiera sólida: ') + U.listJoin(bits);
       }
       heads.D = h + '.';
@@ -9248,8 +10169,21 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     if (FIN && FIN.hasBalance) N.finExhibits(FIN, ex);
     if (RT.list.length) ex('D', { kind: 'ratios', title: RT.fromStatements ? 'Ratios financieros vs referencia del sector' : 'Ratios operacionales', caption: RT.fromStatements ? 'Estados financieros ' + RT.p1 + (RT.p0 ? ' y ' + RT.p0 : '') + '. ' + V.I.BENCH_NOTE : 'Calculados desde ventas, gastos e inventario.', data: RT });
 
+    /* banco: los hallazgos, la evidencia y las respuestas salen del análisis bancario (no de ventas, margen bruto ni inventario) */
+    if (BKA) {
+      findings.length = 0;
+      actions.length = 0;
+      risks.length = 0;
+      ['A', 'B', 'C', 'D'].forEach((k) => {
+        why[k].length = 0;
+        exhibits[k].length = 0;
+      });
+      V.BK.insights(BKA, { F, RISK, ACT, why });
+      V.BK.exhibits(BKA, ex);
+      Object.assign(heads, V.BK.heads(BKA));
+    }
     /* pilares completos */
-    rep.pillars = N.PILLARS.map((pl) => {
+    rep.pillars = (BKA ? V.BK.PILLARS : N.PILLARS).map((pl) => {
       const fs = pillarFind(pl.id);
       const acts = actions.filter((a) => a.pillar === pl.id);
       const rs = risks.filter((r) => r.pillar === pl.id);
@@ -9264,7 +10198,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         risks: rs,
         actions: acts,
         exhibits: exhibits[pl.id],
-        missing: Q.gaps.filter((g) => ({ A: ['ventas', 'cantidad', 'sucursal', 'producto', 'dia', 'presupuesto', 'competencia'], B: ['costo', 'gastos'], C: ['inventario'], D: ['estados'] }[pl.id].includes(g.id))),
+        missing: BKA ? [] : Q.gaps.filter((g) => ({ A: ['ventas', 'cantidad', 'sucursal', 'producto', 'dia', 'presupuesto', 'competencia'], B: ['costo', 'gastos'], C: ['inventario'], D: ['estados'] }[pl.id].includes(g.id))),
       };
     });
 
@@ -9289,7 +10223,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const mainNeg = findings.filter((f) => f.tone === 'neg').sort((a, b) => b.score - a.score);
     const complication = mainNeg[0] ? mainNeg[0].pillar : null;
     const liqRisk = rep.risks.some((r) => r.id === 'liq');
-    rep.options = optDefs
+    rep.options = (BKA ? V.BK.OPTIONS : optDefs)
       .map((o) => {
         const acts = actions.filter((a) => a.option === o.key);
         const impact = U.sum(acts, (a) => a.impact || 0);
@@ -9301,12 +10235,27 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         return Object.assign({}, o, { actions: acts, impact, cash, fit, effort: acts.length > 3 ? 'alto' : acts.length > 1 ? 'medio' : 'bajo', horizon: acts.length ? Math.min(...acts.map((a) => a.horizon)) + '-' + Math.max(...acts.map((a) => a.horizon)) + ' días' : '' });
       })
       .filter((o) => o.actions.length);
+    if (BKA && rep.options.length) {
+      // banco: pesa primero lo que responde a un riesgo (prioridad de sus acciones) y después el impacto estimado
+      const P = Math.max(1, ...rep.options.map((o) => o.impact));
+      rep.options.forEach((o) => (o.fit = o.impact + Math.max(0, ...o.actions.map((a) => a.prio || 0)) * P));
+    }
     rep.options.sort((a, b) => b.fit - a.fit);
     if (rep.options.length) {
       rep.options[0].recommended = true;
       if (rep.options[1] && rep.options[1].fit > rep.options[0].fit * 0.45) rep.options[1].complement = true;
     }
     rep.options.forEach((o, i) => (o.code = String.fromCharCode(65 + i)));
+    if (BKA) {
+      // el plan y el informe siguen el orden de la recomendación: alternativa elegida, complementaria y el resto
+      const oRank = (a) => {
+        const i = rep.options.findIndex((o) => o.key === a.option);
+        return i < 0 ? 99 : i;
+      };
+      actions.sort((a, b) => oRank(a) - oRank(b) || (b.prio || 0) - (a.prio || 0) || b.value - a.value);
+    }
+    // la numeración de las acciones sigue el orden de prioridad
+    actions.forEach((a, i) => (a.id = 'AC' + (i + 1)));
     const hz = { 30: '30 días', 60: '60 días', 90: '90 días' };
     rep.plan = [30, 60, 90].map((h) => ({ horizon: hz[h], items: actions.filter((a) => a.horizon === h) })).filter((x) => x.items.length);
     // tablero de seguimiento
@@ -9325,7 +10274,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const worst = branches.slice().sort((a, b) => (a.dPct || 0) - (b.dPct || 0))[0];
       if (worst.dPct < -0.05) mon.push({ kpi: 'Ventas de ' + worst.name + ' vs año anterior', now: fP(worst.dPct), target: '≥ −5%', freq: 'Semanal' });
     }
-    rep.monitor = mon;
+    rep.monitor = BKA ? V.BK.monitor(BKA) : mon;
 
     /* minúscula inicial solo para palabras comunes (no para nombres de productos, sucursales o marcas) */
     const lc1 = (t) => (/^(El|La|Los|Las|Lo|Un|Una|Se|Si|Sin|Con|En|Hay|Solo|Descontando|Tendencia|Punto|Productos|Producto|Inventario|Liquidez|Rentabilidad|Pasivo|Ciclo|Gastos|Ventas|Margen|Caja|Cumplimiento|Recuperar|Controlar|Reponer|Liberar|Subir|Reposicionar|Plan|Calendario|Renegociar|Diagnosticar|Entre|Puntaje|Cerca|Para|Según|Por|Al|Del|De|Mejor|Día|Estacionalidad|Sucursal|Índice|Últimos)\b/.test(t) ? t.charAt(0).toLowerCase() + t.slice(1) : t);
@@ -9355,8 +10304,15 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (top) head += '; lo más relevante: ' + lc1(top.text.split(/(?<=\.)\s/)[0].replace(/\.$/, ''));
     }
     head += '.';
+    if (BKA) head = V.BK.headline(BKA, company);
     let rec = '';
-    if (recOpt) {
+    if (recOpt && BKA) {
+      // primero las acciones de la alternativa recomendada, luego las de la complementaria
+      const rank = (a) => (a.option === recOpt.key ? 0 : compOpt && a.option === compOpt.key ? 1 : 2);
+      const ord = actions.slice().sort((a, b) => rank(a) - rank(b));
+      rec = 'Prioridad: ' + U.listJoin(ord.slice(0, 3).map(shortOf)) + '.';
+    }
+    else if (recOpt) {
       rec = 'Recomendamos ' + (recOpt.key === 'margen' ? 'proteger el margen' : recOpt.key === 'crecimiento' ? 'crecer donde ya ganamos' : 'priorizar eficiencia y caja') + (compOpt ? ' y complementar con ' + (compOpt.key === 'margen' ? 'medidas de margen' : compOpt.key === 'crecimiento' ? 'acciones de crecimiento' : 'medidas de eficiencia y caja') : '') + ': ' + U.listJoin(actions.slice(0, 3).map(shortOf)) + '.';
     }
     const impactTxt = (totalImpact > 0 ? 'Impacto estimado: hasta ' + f$(totalImpact) + ' de resultado al año' : '') + (totalCash > 0 ? (totalImpact > 0 ? ' y ' : 'Impacto estimado: ') + f$(totalCash) + ' de caja liberada' : '') + (totalImpact > 0 || totalCash > 0 ? '.' : '');
@@ -9383,6 +10339,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     else if (liqRisk) qTxt = '¿Cómo aseguramos la caja para sostener la operación?';
     else qTxt = '¿Cómo sostenemos el crecimiento y capturamos las oportunidades detectadas?';
     rep.scqa = { s, c: cTxt, q: qTxt, a: (rec || rep.vertex.decision) + (impactTxt ? ' ' + impactTxt : '') };
+    if (BKA) {
+      const bq = V.BK.scqa(BKA, company);
+      rep.scqa = { s: bq.s, c: bq.c, q: bq.q, a: rep.scqa.a };
+    }
 
     rep.findings = findings;
     rep.quality = Q;
@@ -9401,6 +10361,11 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       rep.memo = N.memo(FIN, rep, { company, hasProduct: !!model.meta.hasProduct });
       rep.projection = FIN.scenarios ? { scenarios: FIN.scenarios, sens: FIN.sens, drivers: FIN.drivers, base: FIN.last, headline: N.projHeadline(FIN) } : null;
     }
+    if (BKA) {
+      rep.bank = BKA;
+      rep.memo = V.BK.memo(BKA, rep, company);
+      rep.projection = null;
+    }
     rep.annex = {
       products: R.products,
       branches: R.branches,
@@ -9408,7 +10373,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       expenses: E ? E.list : [],
       topByPeriod: R.topByPeriod,
       recon: Q.recon,
-      methodology: N.methodology(R, ind, FIN),
+      methodology: BKA ? N.methodology(R, ind, null).filter((x) => !/^Referencias sectoriales/.test(x)).map((x) => (/^Estructura:/.test(x) ? 'Estructura: Principio de la Pirámide (Barbara Minto): primero la conclusión, luego cuatro argumentos que no se superponen y que juntos cubren el banco (MECE): ingresos y márgenes, eficiencia, riesgo de crédito y solvencia.' : x)).concat(V.BK.methodology(BKA)) : N.methodology(R, ind, FIN),
     };
     rep.ai = null;
     return rep;
@@ -10647,7 +11612,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   C.waterfall = function (spec, w, th) {
     const steps = spec.steps;
     const n = steps.length;
-    const h = 260;
+    const h = spec.h || 260; // alto opcional (láminas)
     let run = 0;
     const bars = steps.map((s) => {
       if (s.kind === 'total') {
@@ -11158,8 +12123,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const last = ps[ps.length - 1];
     const prev = ps.length > 1 ? ps[ps.length - 2] : null;
     const short = (p) => (/^\d{4}$/.test(p) ? p.slice(2) : p);
+    const lab = (p) => (data.labels && data.labels[p]) || p;
     const nCols = ps.length + 2 + (prev ? 1 : 0);
-    let h = '<div class="tbl-wrap"><table class="t fs"><thead><tr><th>Partida</th>' + ps.map((p) => '<th class="n">' + esc(p) + '</th>').join('') + (prev ? '<th class="n">Var. ' + esc(short(last)) + '/' + esc(short(prev)) + '</th>' : '') + '<th class="n">% ' + esc(data.base) + ' ' + esc(last) + '</th></tr></thead><tbody>';
+    let h = '<div class="tbl-wrap"><table class="t fs"><thead><tr><th>Partida</th>' + ps.map((p) => '<th class="n">' + esc(lab(p)) + '</th>').join('') + (prev ? '<th class="n">' + (data.labels ? 'Var.' : 'Var. ' + esc(short(last)) + '/' + esc(short(prev))) + '</th>' : '') + '<th class="n">% ' + esc(data.base) + (data.labels && ps.length === 1 ? '' : ' ' + esc(lab(last))) + '</th></tr></thead><tbody>';
     data.rows.forEach((r) => {
       if (r.head) {
         h += '<tr class="fs-h"><td colspan="' + nCols + '">' + esc(r.l) + '</td></tr>';
@@ -11342,7 +12308,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const txt = k.deltaFmt === 'pp' ? U.fmtPP(k.delta) : k.deltaFmt === 'pctv' ? U.fmtPct(k.delta, 1, true) + ' vs meta' : U.fmtPct(k.delta, 1, true);
       d = '<span class="d ' + cls + '"><span aria-hidden="true">' + arrow + '</span>' + esc(txt) + '</span>';
     }
-    const v = k.fmt === 'money' ? f$(k.value) : k.fmt === 'pct' ? U.fmtPct(k.value, 1) : U.fmtNum(k.value);
+    const v = k.fmt === 'money' ? f$(k.value) : k.fmt === 'pct' || k.fmt === 'pct2' ? U.fmtPct(k.value, k.fmt === 'pct2' ? 2 : 1) : U.fmtNum(k.value);
     return '<div class="kpi"><span class="l">' + esc(k.label) + '</span><span class="v">' + esc(v) + '</span>' + d + '<span class="s">' + esc(k.sub || '') + '</span>' + (spark || '') + '</div>';
   }
 
@@ -11369,7 +12335,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     let h = '<div class="rep-layout"><nav class="toc" aria-label="Índice del reporte">';
     const tocItem = (href, b, t, st) => '<a href="#' + href + '"><b>' + esc(b) + '</b><span>' + esc(t) + '</span>' + (st ? '<span class="st" title="' + esc(STATUS_TXT[st] || '') + '" style="background:var(--st-' + (st === 'critical' ? 'critical' : st === 'warning' ? 'warning' : 'good') + ')"></span>' : '<span></span>') + '</a>';
     h += tocItem('r-top', '▲', 'Mensaje principal') + tocItem('r-kpi', '#', 'Indicadores') + tocItem('r-scqa', '?', 'Situación y pregunta');
-    if (rep.memo) h += tocItem('r-memo', '✎', 'Informe del consultor');
+    if (rep.memo) h += tocItem('r-memo', '✎', rep.memo.title || 'Informe del consultor');
     rep.pillars.forEach((p) => (h += tocItem('r-' + p.id, p.id, p.name, p.status)));
     if (rep.projection) h += tocItem('r-proj', 'P', 'Proyecciones y escenarios');
     h += tocItem('r-risk', 'R', 'Riesgos') + tocItem('r-dec', '✓', 'Decisión y plan') + tocItem('r-annex', 'X', 'Anexos');
@@ -11663,7 +12629,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     // formatos por tipo de KPI
     rep.kpis.forEach((k, i) => {
       const row = ws.getRow(r - 1 - rep.kpis.length + i);
-      row.getCell(2).numFmt = k.fmt === 'money' ? moneyFmt() : k.fmt === 'pct' ? FMT.pct : FMT.num;
+      row.getCell(2).numFmt = k.fmt === 'money' ? moneyFmt() : k.fmt === 'pct' ? FMT.pct : k.fmt === 'pct2' ? '0.00%' : FMT.num;
       row.getCell(3).numFmt = k.deltaFmt === 'pp' ? '+0.0%" pp";-0.0%" pp"' : FMT.pctS;
       if (k.deltaFmt === 'pp' && k.delta !== null) {
         row.getCell(3).value = k.delta * 100;
@@ -11693,7 +12659,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     /* 1b · Informe del consultor y análisis financiero profundo */
     const FIN = app.fin && rep.fin ? app.fin : null;
     if (rep.memo) {
-      ws = wb.addWorksheet('Informe del consultor', { views: [{ showGridLines: false }] });
+      ws = wb.addWorksheet((rep.memo.title || 'Informe del consultor').replace(/[\[\]:*?\/\\]/g, ' ').slice(0, 31), { views: [{ showGridLines: false }] });
       widths(ws, [4, 120]);
       ws.getCell(1, 2).value = rep.memo.title;
       ws.getCell(1, 2).font = { size: 16, bold: true, color: { argb: NAVY } };
@@ -11719,6 +12685,49 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         }
         mr++;
       });
+    }
+    /* 1c · bancos: estados del banco e indicadores de la banca */
+    const BKA = app.bank && rep.bank ? app.bank : null;
+    if (BKA) {
+      ws = wb.addWorksheet('Estados del banco', { views: [{ showGridLines: false }] });
+      const tabs = [
+        ['Estado de situación financiera', V.BK.statementTable(BKA, 'bal')],
+        ['Estado de resultados', V.BK.statementTable(BKA, 'inc')],
+      ];
+      const maxP = Math.max.apply(null, tabs.map((t) => t[1].periods.length));
+      widths(ws, [50].concat(Array(maxP).fill(18)).concat([12, 14]));
+      let br = 1;
+      ws.getCell(br, 1).value = 'Estados financieros del banco · ' + rep.meta.company;
+      ws.getCell(br, 1).font = { size: 14, bold: true, color: { argb: NAVY } };
+      ws.getCell(br + 1, 1).value = 'Partidas principales leídas de los estados (formato CMF). Las colocaciones se informan netas de provisiones cuando el estado así lo indica.';
+      ws.getCell(br + 1, 1).font = { italic: true, size: 9, color: { argb: MUTED } };
+      br += 3;
+      tabs.forEach(([title, T]) => {
+        const ps = T.periods;
+        const lastP = ps[ps.length - 1];
+        const lab = (q) => (T.labels && T.labels[q]) || q;
+        const cols = [{ h: title, k: 'l' }]
+          .concat(ps.map((q) => ({ h: lab(q), v: (x) => (x.vals && x.vals[q] !== null && x.vals[q] !== undefined ? x.sign * x.vals[q] : null), f: 'money' })))
+          .concat(ps.length > 1 ? [{ h: 'Var. %', v: (x) => (x.dPct === undefined ? null : x.dPct), f: 'pctS' }] : [])
+          .concat([{ h: '% ' + (T.base === 'ingresos' ? 'ingresos' : 'activo'), v: (x) => (x.vpct && x.vpct[lastP] !== null && x.vpct[lastP] !== undefined ? x.sign * x.vpct[lastP] : null), f: 'pct' }]);
+        const start = br;
+        br = table(ws, br, null, cols, T.rows.map((x) => (x.head ? { l: x.l.toUpperCase(), vals: {}, vpct: {}, sign: 1, head: true } : x)), { noZebra: true });
+        T.rows.forEach((x, i) => {
+          const row = ws.getRow(start + 1 + i);
+          if (x.head) row.font = { bold: true, color: { argb: MUTED }, size: 9 };
+          else if (x.lvl >= 1 && x.lvl <= 2) {
+            row.font = { bold: true };
+            row.eachCell((c) => (c.border = { top: { style: x.lvl === 2 ? 'double' : 'thin', color: { argb: INK } } }));
+          } else if (x.lvl === 3) row.font = { italic: true, color: { argb: MUTED } };
+        });
+      });
+      // indicadores de la banca (la misma tabla del pilar D)
+      const exK = [].concat.apply([], rep.pillars.map((p) => p.exhibits)).find((e) => e.kind === 'table' && /indicadores del banco/i.test(e.title));
+      if (exK) {
+        ws = wb.addWorksheet('Indicadores del banco', { views: [{ showGridLines: false }] });
+        widths(ws, [56].concat(exK.columns.slice(1).map(() => 22)));
+        table(ws, 1, exK.title, exK.columns.map((c) => ({ h: c.l, k: c.k, f: c.f })), exK.rows, { note: exK.caption });
+      }
     }
     if (FIN) {
       const ps = FIN.periods;
@@ -11971,8 +12980,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       ];
       table(ws, rr, 'Semanas y meses', [{ h: 'Concepto', k: 'l' }, { h: 'Período', k: 'p' }, { h: 'Ventas', k: 'v', f: 'money' }], summ);
     }
-    /* 7 · Mensual y proyección */
-    if (R.monthly.length) {
+    /* 7 · Mensual y proyección (no aplica cuando las "ventas" salen de estados financieros anuales o acumulados) */
+    const onlyFS = !!(app.model.meta && app.model.meta.fromStatements);
+    if (R.monthly.length && !onlyFS) {
       ws = wb.addWorksheet('Mensual');
       widths(ws, [14, 16, 12, 16, 10, 16, 16, 16, 16]);
       const rows = R.monthly.filter((m) => m.salesMonth).map((m) => ({ key: U.monthLabel(m.key), rev: m.rev, q: m.q, cost: m.cost || null, gm: m.gm, exp: m.exp, ebit: m.ebit, bRev: m.bRev, bExp: m.bExp, note: m.partial ? 'mes incompleto' : '' }));
@@ -11991,7 +13001,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         table(ws, rr, 'Proyección (' + R.trend.method + ')', [{ h: 'Mes', v: (f) => U.monthLabel(f.key) }, { h: 'Proyección', k: 'value', f: 'money' }, { h: 'Mínimo (80%)', k: 'lo', f: 'money' }, { h: 'Máximo (80%)', k: 'hi', f: 'money' }], R.trend.forecast);
     }
     /* 8 · Estacionalidad */
-    if (R.season && R.season.heat && R.season.heat.length) {
+    if (R.season && R.season.heat && R.season.heat.length && !onlyFS) {
       ws = wb.addWorksheet('Estacionalidad');
       widths(ws, [12].concat(new Array(12).fill(12)));
       const rows = R.season.heat.map((h) => {
@@ -12098,8 +13108,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (offers.length) rr = table(ws, rr, 'Detalle por competidor', [{ h: 'Producto propio', k: 'own' }, { h: 'Competidor', k: 'comp' }, { h: 'Nombre publicado', k: 'name' }, { h: 'Precio', k: 'price', f: 'money' }, { h: 'Fecha', k: 'd', f: 'date' }], offers);
       if (aiPr) table(ws, rr, 'Precios de mercado referenciales estimados con IA (aproximación, validar antes de usar)', [{ h: 'Producto', k: 'name' }, { h: 'Nuestro precio', k: 'own', f: 'money' }, { h: 'Mínimo', k: 'min', f: 'money' }, { h: 'Típico', k: 'typ', f: 'money' }, { h: 'Máximo', k: 'max', f: 'money' }, { h: 'Índice', v: (x) => (x.idx ? x.idx * 100 : null), f: 'idx' }, { h: 'Confianza', k: 'conf' }, { h: 'Qué se comparó', k: 'note', wrap: true }], aiPr);
     }
-    /* 13 · Ratios */
-    if (R.ratios.list.length) {
+    /* 13 · Ratios (los de una empresa comercial no aplican a un banco) */
+    if (R.ratios.list.length && !rep.bank) {
       ws = wb.addWorksheet('Ratios financieros');
       widths(ws, [16, 34, 46, 14, 14, 34, 12, 60]);
       table(ws, 1, 'Ratios financieros vs referencia del sector', [
@@ -12167,7 +13177,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
 
     /* 16 · Datos limpios de ventas */
     const S = app.model.sales;
-    if (S.length) {
+    if (S.length && !onlyFS) {
       ws = wb.addWorksheet('Datos limpios - Ventas');
       widths(ws, [12, 16, 12, 12, 32, 18, 10, 14, 16, 16, 20]);
       const cols = ['Fecha', 'Sucursal', 'Canal', 'SKU', 'Producto', 'Categoría', 'Unidades', 'Precio unitario', 'Venta', 'Costo', 'Observación'];
@@ -12571,7 +13581,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     label('Estado actual');
     tableFrom(
       [{ l: 'Indicador', k: 'label', w: 48 }, { l: 'Valor', k: 'vtxt' }, { l: 'Variación', k: 'dtxt' }, { l: 'Detalle', k: 'sub' }],
-      rep.kpis.map((k) => ({ label: k.label, vtxt: k.fmt === 'money' ? f$(k.value) : k.fmt === 'pct' ? U.fmtPct(k.value, 1) : U.fmtNum(k.value), dtxt: k.delta === null || k.delta === undefined ? '' : k.deltaFmt === 'pp' ? U.fmtPP(k.delta) : k.deltaFmt === 'pctv' ? U.fmtPct(k.delta, 1, true) + ' vs meta' : U.fmtPct(k.delta, 1, true), sub: k.sub })),
+      rep.kpis.map((k) => ({ label: k.label, vtxt: k.fmt === 'money' ? f$(k.value) : k.fmt === 'pct' || k.fmt === 'pct2' ? U.fmtPct(k.value, k.fmt === 'pct2' ? 2 : 1) : U.fmtNum(k.value), dtxt: k.delta === null || k.delta === undefined ? '' : k.deltaFmt === 'pp' ? U.fmtPP(k.delta) : k.deltaFmt === 'pctv' ? U.fmtPct(k.delta, 1, true) + ' vs meta' : U.fmtPct(k.delta, 1, true), sub: k.sub })),
       { padY: 0.95 }
     );
     // SCQA (se mantiene junta: si no cabe completa, pasa a la página siguiente)
@@ -12610,7 +13620,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const last = ps[ps.length - 1];
       const prevP = ps.length > 1 ? ps[ps.length - 2] : null;
       const rows = data.rows;
-      const head = ['Partida'].concat(ps).concat(prevP ? ['Var.'] : []).concat(['% ' + last]);
+      const lab = (p) => (data.labels && data.labels[p]) || p;
+      const head = ['Partida'].concat(ps.map(lab)).concat(prevP ? ['Var.'] : []).concat([data.labels && ps.length === 1 ? '% ' + (data.base === 'ingresos' ? 'ingresos' : 'activo') : '% ' + lab(last)]);
       const body = rows.map((r) => (r.head ? [r.l.toUpperCase()].concat(ps.map(() => '')).concat(prevP ? [''] : []).concat(['']) : [r.l].concat(ps.map((p) => (r.vals[p] === null || r.vals[p] === undefined ? '-' : f$(r.sign * r.vals[p])))).concat(prevP ? [r.dPct === null || r.dPct === undefined ? '-' : U.fmtPct(r.dPct, 0, true)] : []).concat([r.vpct[last] === null || r.vpct[last] === undefined ? '-' : U.fmtPct(r.sign * r.vpct[last], 1)])));
       const cs = { 0: { cellWidth: 62 } };
       for (let i = 1; i < head.length; i++) cs[i] = { halign: 'right' };
@@ -13122,7 +14133,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const last = ps[ps.length - 1];
       const rows = data.rows;
       const withVar = ps.length > 1 && rows.some((r) => ok(r.dPct));
-      const head = ['Partida'].concat(ps).concat(withVar ? ['Var.'] : []).concat(withPct ? ['% ' + (data.base === 'ingresos' ? 'ventas' : 'activo')] : []);
+      const head = ['Partida'].concat(ps.map((q) => (data.labels && data.labels[q]) || q)).concat(withVar ? ['Var.'] : []).concat(withPct ? ['% ' + (data.base === 'ingresos' ? (data.labels ? 'ingresos' : 'ventas') : 'activo')] : []);
       const nNum = head.length - 1;
       const body = rows.map((r) =>
         r.head
@@ -13248,7 +14259,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const memo = rep.memo;
     if (memo && memo.sections.length) {
       s = slide();
-      eyebrow(s, 'Informe del consultor · motor de reglas, sin IA');
+      eyebrow(s, (memo.title || 'Informe del consultor') + ' · motor de reglas, sin IA');
       title(s, memo.sections[0].p[0]);
       const diag = memo.sections
         .filter((x) => /^[2-5]\./.test(x.h))
@@ -13282,12 +14293,12 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const x = 0.5 + col * 3.1;
       const y = 1.8 + row * 2.4;
       s.addShape(pptx.ShapeType.roundRect, { x, y, w: 2.95, h: 2.15, fill: { color: 'FFFFFF' }, line: { color: RULE, width: 1 }, rectRadius: 0.06 });
-      const v = k.fmt === 'money' ? f$(k.value) : k.fmt === 'pct' ? U.fmtPct(k.value, 1) : U.fmtNum(k.value);
+      const v = k.fmt === 'money' ? f$(k.value) : k.fmt === 'pct' || k.fmt === 'pct2' ? U.fmtPct(k.value, k.fmt === 'pct2' ? 2 : 1) : U.fmtNum(k.value);
       const dtxt = k.delta === null || k.delta === undefined ? '' : (k.delta > 0 ? '▲ ' : k.delta < 0 ? '▼ ' : '') + (k.deltaFmt === 'pp' ? U.fmtPP(k.delta) : k.deltaFmt === 'pctv' ? U.fmtPct(k.delta, 1, true) + ' vs meta' : U.fmtPct(k.delta, 1, true));
       s.addText(
         [
           { text: k.label, options: { fontSize: 11, bold: true, color: INK2, breakLine: true } },
-          { text: v, options: { fontSize: 26, bold: true, color: INK, breakLine: true } },
+          { text: v, options: { fontSize: v.length >= 15 ? 19 : v.length >= 12 ? 22 : 26, bold: true, color: INK, breakLine: true } },
           { text: dtxt || ' ', options: { fontSize: 11, bold: true, color: k.good === null || k.good === undefined ? MUTED : k.good ? '08700A' : 'B3261E', breakLine: true } },
           { text: k.sub || '', options: { fontSize: 9.5, color: MUTED } },
         ],
@@ -13304,12 +14315,23 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       title(s, ap && ap.titular ? ap.titular : p.answer);
       chip(s, p.status, 11.72, 0.24);
       const main = p.exhibits.find((e) => e.kind === 'chart' && (e.spec.type === 'line' || e.spec.type === 'bars'));
+      // banco: la cascada de ingresos a utilidad (imagen) o la tabla de indicadores del pilar
+      const bankX = rep.bank && !main ? p.exhibits.find((e) => e.kind === 'chart' && e.spec.type === 'waterfall') || p.exhibits.find((e) => e.kind === 'table' && e.rows.length && e.rows.length <= 14) : null;
       const left = { x: 0.5, y: 1.7, w: 7.4, h: 4.6 };
       if (main) {
         label(s, main.ref + ' · ' + main.title, 0.5, 1.55, 7.4);
         if (main.spec.type === 'line') lineChart(s, main.spec, { x: 0.5, y: 1.85, w: 7.4, h: 4.4 });
         else barChart(s, main.spec, { x: 0.5, y: 1.85, w: 7.4, h: 4.4 }, main.spec.diverging ? { chartColors: [CUR], invertedColors: [NEG], valAxisLabelFormatCode: '0%' } : {});
-      } else if (p.id === 'D') {
+      } else if (bankX && bankX.kind === 'chart') {
+        label(s, bankX.ref + ' · ' + bankX.title, 0.5, 1.55, 7.4);
+        await imgChart(s, Object.assign({}, bankX.spec, { h: 460 }), { x: 0.5, y: 1.95, w: 7.4 }, 4.3);
+      } else if (bankX) {
+        label(s, bankX.ref + ' · ' + bankX.title, 0.5, 1.55, 7.4);
+        const nC = bankX.columns.length;
+        const cellOf = (v, f) => (v === null || v === undefined ? '–' : f === 'money' ? f$(v) : f === 'pct' ? U.fmtPct(v, 1) : typeof v === 'number' ? U.fmtNum(v) : String(v));
+        addTable(s, bankX.columns.map((c) => c.l), bankX.rows.map((r) => bankX.columns.map((c) => cellOf(r[c.k], c.f))), { x: 0.5, y: 1.85, w: 7.4, colW: [7.4 - (nC - 1) * (nC === 2 ? 2.6 : 1.45)].concat(Array(nC - 1).fill(nC === 2 ? 2.6 : 1.45)), fontSize: 10 }, { right: Array.from({ length: nC - 1 }, (_, i) => i + 1) });
+        if (bankX.caption) s.addText(bankX.caption, { x: 0.5, y: 5.75, w: 7.4, h: 0.6, fontFace: FONT, fontSize: 9, italic: true, color: MUTED, valign: 'top' });
+      } else if (p.id === 'D' && !rep.bank) {
         const RT = R.ratios;
         const fmtV = (r, v) => (v === null || v === undefined ? '–' : r.unit === '%' ? U.fmtPct(v, 1) : r.unit === 'días' ? U.fmtNum(v, 0) : r.unit === '$' ? f$(v) : U.fmtNum(v, 2));
         addTable(s, ['Ratio', RT.p1 || 'Actual', RT.p0 || 'Anterior', 'Referencia', 'Estado'], RT.list.map((r) => [r.name, fmtV(r, r.v1), fmtV(r, r.v0), r.benchLabel || '–', ST_TXT[r.status] || '–']), { x: 0.5, y: 1.7, w: 7.6, colW: [2.9, 1.0, 1.0, 1.75, 0.95], fontSize: 9 }, { right: [1, 2], cell: (i, j) => (j === 4 ? { fill: { color: STBG[RT.list[i].status] || 'FFFFFF' }, bold: true } : {}) });
@@ -13453,6 +14475,27 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           eyebrow(s, 'C · Productos que requieren acción');
           title(s, 'Reponer lo que puede quebrar stock y liberar el inventario lento');
           addTable(s, ['Producto', 'Estado', 'Stock (u)', 'Valor', 'Demanda diaria', 'Cobertura (días)'], rows.map((r) => [r.name, r.status, U.fmtNum(r.stock), f$(r.value), U.fmtNum(r.demand, 1), isFinite(r.cover) ? U.fmtNum(r.cover) : 'sin demanda']), { x: 0.5, y: 1.7, w: 12.35, colW: [4.2, 2.0, 1.4, 1.6, 1.55, 1.6], fontSize: 10 }, { right: [2, 3, 4, 5], cell: (i, j) => (j === 1 ? { fill: { color: rows[i].status === 'riesgo' || rows[i].status === 'quiebre' ? STBG.critical : STBG.warning }, bold: true } : {}) });
+        }
+      }
+      /* banco: estados del banco en una lámina (balance a la izquierda, resultados a la derecha) */
+      const BKA = rep.bank && app.bank ? app.bank : null;
+      if (BKA && p.id === 'D') {
+        const tB = V.BK.statementTable(BKA, 'bal');
+        const tI = V.BK.statementTable(BKA, 'inc');
+        if (tB.rows.length || tI.rows.length) {
+          s = slide();
+          eyebrow(s, 'D · Estados financieros del banco');
+          const fb = BKA.f;
+          title(s, (ok(fb.ta) ? 'Activos por ' + f$(fb.ta) + ' al ' + V.BK.balDate(BKA, BKA.last) + (ok(BKA.k.loansTa) ? ', ' + U.fmtPct(BKA.k.loansTa, 0) + ' en colocaciones' : '') + '; ' : '') + 'utilidad de ' + f$(fb.ni) + ' ' + V.BK.longPeriod(BKA, BKA.last));
+          if (tB.rows.length) {
+            label(s, 'Estado de situación financiera', 0.5, 1.55, 6.05);
+            stmtTableP(s, tB, { x: 0.5, y: 1.85, w: 6.05 }, 2, true);
+          }
+          if (tI.rows.length) {
+            label(s, 'Estado de resultados', 6.8, 1.55, 6.05);
+            stmtTableP(s, tI, { x: 6.8, y: 1.85, w: 6.05 }, 2, true);
+          }
+          notes(s, ['Partidas principales leídas de los estados del banco (formato CMF). La serie completa está en el Excel exportado (hoja "Estados del banco").']);
         }
       }
       /* láminas financieras: estados comparativos, caja, capital de trabajo y hallazgos contables */
@@ -14473,9 +15516,11 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     }
     const P = V.A.periods(app.model, app.settings.period);
     app.R = V.A.run(app.model, P, { industry: ind, bench: V.I.bench(ind, app.settings.benchOverrides), country: app.settings.country });
-    // análisis financiero profundo (balance y estado de resultados de uno o más años)
+    // análisis financiero profundo (balance y estado de resultados de uno o más años); un banco tiene su propio análisis
+    app.bank = null;
     try {
-      app.fin = V.F ? V.F.analyze(app.model, { country: app.settings.country, currency: app.settings.currency }) : null;
+      if (app.model.meta.bank && V.BK) app.bank = V.BK.analyze(app.model);
+      app.fin = V.F && !app.bank ? V.F.analyze(app.model, { country: app.settings.country, currency: app.settings.currency }) : null;
     } catch (e) {
       console.error(e);
       app.fin = null;
@@ -14483,7 +15528,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     app.rep = V.N.build(app.model, app.R, app.Q, {
       industry: ind,
       fin: app.fin,
-      company: app.settings.company || (app.model.ledger && app.model.ledger.company ? U.titleCase(app.model.ledger.company).replace(/\bSpa\b/, 'SpA').replace(/\bS\.a\./i, 'S.A.').replace(/\bLtda\b/i, 'Ltda.') : '') || 'La empresa',
+      bank: app.bank,
+      company: app.settings.company || (app.model.ledger && app.model.ledger.company ? U.companyCase(app.model.ledger.company) : '') || 'La empresa',
       texts: textsForReport(),
       country: app.settings.country,
       demo: app.demo,
@@ -14582,9 +15628,24 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     $('#busy-text').textContent = 'Analizando…';
     await U.nextFrame();
     recompute();
-    // el balance (o el encabezado de los estados financieros) trae el nombre, RUT y giro de la empresa:
-    // completa el perfil si está vacío
-    let lg = app.model && app.model.ledger;
+    const pmsg = autoProfile();
+    busy(false);
+    try {
+      renderAll();
+    } catch (e) {
+      console.error(e);
+      app.error = app.error || (e && e.message) || String(e);
+    }
+    if (!app.error) toast((n ? n + ' tabla(s) detectadas. Revisa el paso 2 si algo no calza.' : 'No se detectaron tablas; revisa las notas de cada archivo.') + (pmsg ? ' ' + pmsg : ''), pmsg ? 7000 : undefined);
+    else toast('Se leyeron los archivos, pero el análisis no terminó (' + app.error + '). Revisa el paso 2.', 7000);
+    saveSessionSoon();
+  }
+  /* el balance (o el encabezado de los estados financieros) trae el nombre, RUT y giro de la empresa: completa el perfil,
+     y lo cambia si los archivos son de otra empresa y el nombre no lo escribió el usuario (companyAuto: false).
+     Devuelve un aviso para el usuario, o null. */
+  function autoProfile() {
+    if (app.demo || !app.model) return null;
+    let lg = app.model.ledger;
     if ((!lg || !lg.company) && V.ACC) {
       for (const t of app.tables.filter((x) => x.enabled && (x.type === 'estados' || x.type === 'balance8'))) {
         const c = V.ACC.companyOf((t.titleLines || []).concat(t.meta && t.meta.title ? [t.meta.title] : []));
@@ -14594,33 +15655,49 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         }
       }
     }
-    if (lg) {
-      let changed = false;
-      if (!app.settings.company && lg.company) {
-        app.settings.company = U.titleCase(lg.company).replace(/\bSpa\b/, 'SpA').replace(/\bS\.a\./i, 'S.A.').replace(/\bLtda\b\.?/i, 'Ltda.').replace(/\bEirl\b/i, 'EIRL');
+    const bank = !!(app.model.meta && app.model.meta.bank);
+    const key = (x) => U.norm(x || '').replace(/[^a-z0-9]/g, '');
+    let changed = false;
+    let other = false;
+    let msg = null;
+    if (lg && lg.company) {
+      const name = U.companyCase(lg.company);
+      if (!app.settings.company) {
+        app.settings.company = name;
+        app.settings.companyAuto = true;
+        changed = true;
+      } else if (key(app.settings.company) !== key(name)) {
+        if (app.settings.companyAuto !== false) {
+          msg = 'Los archivos son de ' + name + ': el perfil cambió de «' + app.settings.company + '» a ese nombre.';
+          app.settings.company = name;
+          app.settings.companyAuto = true;
+          other = true;
+          changed = true;
+        } else msg = 'Los archivos parecen ser de ' + name + ', pero el perfil dice «' + app.settings.company + '»: cámbialo en el paso 1 si corresponde.';
+      } else if (app.settings.company !== name && app.settings.companyAuto !== false) {
+        // mismo nombre, mejor escrito ("Banco De Chile" → "Banco de Chile")
+        app.settings.company = name;
         changed = true;
       }
-      const g = V.I.guess(lg.giro);
-      if (g && (!app.settings.industry || app.settings.industry === 'otra')) {
-        app.settings.industry = g;
-        changed = true;
-      }
-      if (changed) {
-        fillProfile();
-        saveProfile();
-        recompute();
-      }
     }
-    busy(false);
-    try {
-      renderAll();
-    } catch (e) {
-      console.error(e);
-      app.error = app.error || (e && e.message) || String(e);
+    // industria: la del giro (o banca si los estados son de un banco); la de otra empresa no sirve
+    const g = bank ? 'banca' : lg ? V.I.guess(lg.giro) : null;
+    const ind = app.settings.industry;
+    if (g && g !== ind && (!ind || ind === 'otra' || other || (bank && app.settings.industryAuto !== false) || app.settings.industryAuto === true)) {
+      app.settings.industry = g;
+      app.settings.industryAuto = true;
+      changed = true;
+    } else if (!g && ind !== 'otra' && (other || (ind === 'banca' && !bank && app.settings.industryAuto !== false))) {
+      app.settings.industry = 'otra';
+      app.settings.industryAuto = true;
+      changed = true;
     }
-    if (!app.error) toast(n ? n + ' tabla(s) detectadas. Revisa el paso 2 si algo no calza.' : 'No se detectaron tablas; revisa las notas de cada archivo.');
-    else toast('Se leyeron los archivos, pero el análisis no terminó (' + app.error + '). Revisa el paso 2.', 7000);
-    saveSessionSoon();
+    if (changed) {
+      fillProfile();
+      saveProfile();
+      recompute();
+    }
+    return msg;
   }
   function clearAll() {
     app.sources = [];
@@ -14642,7 +15719,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       p = null;
     }
     app.settings.company = (p && p.company) || '';
+    app.settings.companyAuto = p ? p.companyAuto : undefined;
     app.settings.industry = (p && p.industry) || 'otra';
+    app.settings.industryAuto = p ? p.industryAuto : undefined;
     app.settings.country = (p && p.country) || 'CL';
     app.settings.currency = (p && p.currency) || 'CLP';
     app.settings.notes = '';
@@ -14684,7 +15763,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   function saveProfile() {
     if (app.demo) return;
     try {
-      localStorage.setItem(PREF_KEY, JSON.stringify({ company: app.settings.company, industry: app.settings.industry, country: app.settings.country, currency: app.settings.currency }));
+      localStorage.setItem(PREF_KEY, JSON.stringify({ company: app.settings.company, companyAuto: app.settings.companyAuto, industry: app.settings.industry, industryAuto: app.settings.industryAuto, country: app.settings.country, currency: app.settings.currency }));
     } catch (e) {
       /* sin almacenamiento */
     }
@@ -14937,12 +16016,12 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   function sessionObject() {
     return {
       app: 'Vértice Gerencial',
-      version: 1,
+      version: 2,
       savedAt: new Date().toISOString(),
       settings: app.settings,
       demo: app.demo,
       sources: app.sources.map((s) => ({ name: s.name, kind: s.kind, size: s.size, texts: s.texts, notes: s.notes, tables: s.tables })),
-      tableConfigs: app.tables.map((t) => ({ source: t.sourceName, name: t.name, type: t.type, mapping: t.mapping, enabled: t.enabled })),
+      tableConfigs: app.tables.map((t) => ({ source: t.sourceName, name: t.name, type: t.type, mapping: t.mapping, enabled: t.enabled, user: !!t.userType, userMap: !!t.userMap })),
       ai: app.ai.report,
       aiPrices: app.ai.prices,
     };
@@ -14954,16 +16033,28 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     app.settings.overrides = (obj.settings && obj.settings.overrides) || { expenses: {} };
     app.demo = !!obj.demo;
     (obj.sources || []).forEach((s) => addSource({ id: U.uid('src'), name: s.name, kind: s.kind, size: s.size || 0, texts: s.texts || [], notes: s.notes || [], tables: s.tables || [], blobs: [] }));
+    // desde la versión 2 solo se restaura lo que eligió el usuario: el resto lo decide el lector actual, que puede haber
+    // mejorado. Las sesiones antiguas no lo distinguen: se respetan, salvo una tabla que antes quedó como "otro" y que
+    // ahora se reconoce como estados financieros o balance.
+    const v2 = (obj.version || 1) >= 2;
     (obj.tableConfigs || []).forEach((cfg) => {
       const t = app.tables.find((x) => x.sourceName === cfg.source && x.name === cfg.name);
       if (t) {
-        t.type = cfg.type;
-        if (cfg.mapping && cfg.mapping.length === t.headers.length) t.mapping = cfg.mapping;
+        const keepType = v2 ? !!cfg.user : !(cfg.type === 'otro' && (t.type === 'estados' || t.type === 'balance8'));
+        if (keepType && cfg.type && V.S.TYPES[cfg.type]) {
+          t.type = cfg.type;
+          t.userType = !!cfg.user;
+        }
+        if ((v2 ? cfg.userMap : keepType) && cfg.mapping && cfg.mapping.length === t.headers.length) {
+          t.mapping = cfg.mapping;
+          t.userMap = !!cfg.userMap;
+        }
         t.enabled = cfg.enabled !== false;
       }
     });
     fillProfile();
     recompute(true);
+    autoProfile();
     app.ai.report = obj.ai || null;
     app.ai.prices = obj.aiPrices || null;
   }
@@ -15141,6 +16232,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       recomputeSoon();
       saveSessionSoon();
     };
+    $('#f-company').addEventListener('input', () => (app.settings.companyAuto = false));
+    $('#f-industry').addEventListener('change', () => (app.settings.industryAuto = false));
     ['#f-company', '#f-notes'].forEach((s) => $(s).addEventListener('input', U.debounce(prof, 500)));
     ['#f-industry', '#f-country', '#f-currency'].forEach((s) => $(s).addEventListener('change', prof));
     // delegación general
@@ -15149,10 +16242,12 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (el.matches('[data-trole]')) {
         const t = app.tables.find((x) => x.id === el.dataset.trole);
         S.setRole(t, Number(el.dataset.col), el.value);
+        t.userMap = true;
         recomputeSoon();
       } else if (el.matches('[data-ttype]')) {
         const t = app.tables.find((x) => x.id === el.dataset.ttype);
         S.setType(t, el.value);
+        t.userType = true;
         recomputeSoon();
       } else if (el.matches('[data-tenable]')) {
         const t = app.tables.find((x) => x.id === el.dataset.tenable);
@@ -15168,6 +16263,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         V.RU.render(app);
       } else if (el.id === 'f-industry2') {
         app.settings.industry = el.value;
+        app.settings.industryAuto = false;
         $('#f-industry').value = el.value;
         saveProfile();
         recompute();
