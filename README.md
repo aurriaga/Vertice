@@ -1,8 +1,26 @@
-# Vértice Gerencial · versión 2.3
+# Vértice Gerencial · versión 2.4
 
 Reportes para la toma de decisiones a partir de los archivos que entrega la empresa (Excel, CSV, PDF con texto o escaneado, imágenes, Word, PowerPoint, exportes de Power BI, JSON, XML, HTML o una tabla pegada). El informe se arma con el **Principio de la Pirámide** (Barbara Minto): primero la conclusión y la decisión que se pide, después cuatro argumentos MECE con su evidencia.
 
-## Qué hay de nuevo en la 2.3
+## Qué hay de nuevo en la 2.4
+
+**Comparación entre años**
+
+- Si los archivos traen varios años (estados financieros con varias columnas, un archivo por año, balances de 8 columnas, formularios 29 o ventas de varios años), el reporte compara **hasta cinco años cerrados más el año en curso**.
+- Lee también los resúmenes de ventas de varios años: **un año por fila con los meses en columnas**, o **un mes por fila con los años en columnas** (la fila de total se descarta).
+- Gráficos nuevos de ventas: ventas por año con su variación, **ventas mes a mes con una línea por año** y ventas acumuladas del año en curso frente a los mismos meses de años anteriores.
+- Gráficos nuevos de estados financieros: márgenes por año, resultado del ejercicio por año (ganancia en azul, pérdida en rojo), el **puente del ingreso a la utilidad**, composición del activo y cómo se financia (pasivos y patrimonio) año a año.
+- Gráficos nuevos de salud financiera: rentabilidad (ROE y ROA), días de cobro, inventario y pago, liquidez con su línea de 1,0 y el **Z″ de Altman con sus zonas**.
+- Los períodos parciales o con estados incompletos se marcan (barra clara o punto hueco), y un año extremo (por ejemplo, el de arranque de la empresa) no aplasta a los demás: queda en el borde con su valor real.
+
+**Textos resumidos en gráficos**
+
+- El **informe del consultor** muestra cada sección como una frase y un gráfico (utilidad ajustada, puente de resultados, flujo de caja, Z″, hallazgos contables y tributarios con su monto, riesgos, efecto de cada acción y escenarios). El texto completo queda en «Ver detalle».
+- En cada pilar, los gráficos van primero y los hallazgos, causas y riesgos quedan plegados. La situación, complicación, pregunta y respuesta muestran una oración clave cada una.
+- El **PDF** sigue el mismo orden (el texto completo del informe va en el anexo), el **PowerPoint** trae láminas de comparación entre años y láminas del informe con sus gráficos (el texto completo, en las notas) y el **Excel** suma la hoja «Comparación por año» con los datos de cada gráfico.
+- La empresa de ejemplo ahora trae estados financieros de 2022 a 2025 para mostrar la comparación.
+
+## Lo que trajo la 2.3
 
 **Revisión de auditoría (contable NIIF para PYMES y tributaria)**
 
@@ -96,7 +114,7 @@ Los archivos se procesan en el navegador y no se suben a ningún servidor. En cl
 ## Actualizar tu app en GitHub Pages (si ya la tienes publicada)
 
 1. Entra a tu repositorio (por ejemplo `github.com/TU-USUARIO/vertice`).
-2. Usa **Add file → Upload files** y arrastra `index.html`, `sw.js` y `README.md`. **En la 2.3 también cambia `vendor/xlsx.full.min.js`**: entra a la carpeta `vendor` del repositorio y súbelo ahí (reemplaza al anterior). Si vienes de una versión anterior a la 2.1, sube **todo el contenido** de esta carpeta (`index.html`, `sw.js`, `manifest.webmanifest`, `.nojekyll` y las carpetas `vendor`, `fonts` e `icons`). Los archivos con el mismo nombre se reemplazan.
+2. Usa **Add file → Upload files** y arrastra `index.html`, `sw.js` y `README.md`. **Si tu app publicada es anterior a la 2.3, sube también `vendor/xlsx.full.min.js`**: entra a la carpeta `vendor` del repositorio y súbelo ahí (reemplaza al anterior). Si vienes de una versión anterior a la 2.1, sube **todo el contenido** de esta carpeta (`index.html`, `sw.js`, `manifest.webmanifest`, `.nojekyll` y las carpetas `vendor`, `fonts` e `icons`). Los archivos con el mismo nombre se reemplazan.
 3. Presiona **Commit changes** y espera uno o dos minutos.
 4. Abre la app con conexión: toma la versión nueva sola. Si todavía ves la anterior, ciérrala y ábrela de nuevo (en el navegador, Ctrl + F5).
 

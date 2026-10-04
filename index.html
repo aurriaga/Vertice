@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-c4M4Tu3PMDifZWmxo7Z+iLixLWzd2Q5u8CcvIG9SvJ0=' 'sha256-h4pCiYPcUVJhgXY+mTPWQ7Ytw/g9P46XfPiKrF54NHo=' 'sha256-pOhIjBVtnOmCDos4EatB0a3LwqNe16y0KDsrADEbi6U=' 'sha256-RGaAAQ4XtW85HANKHMn+8tnzGNGWbeIU7WsgPmd8xMM=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-c4M4Tu3PMDifZWmxo7Z+iLixLWzd2Q5u8CcvIG9SvJ0=' 'sha256-l9ZoMn3dYN5ycdzMC1GBmPP43KOdC+7MWgnmou02TIc=' 'sha256-mcap54x2xaKeNvxCDzUPY6R6ude4o1a3eL2f8ZS39SE=' 'sha256-RGaAAQ4XtW85HANKHMn+8tnzGNGWbeIU7WsgPmd8xMM=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; manifest-src 'self'">
 <meta name="referrer" content="no-referrer">
 <script>(function(){try{if(window.top!==window.self&&window.top.location.origin!==location.origin)throw 0;}catch(e){document.documentElement.style.display='none';try{window.top.location=location.href;}catch(e2){}}})();</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -48,6 +48,17 @@
   --seq-5: #256abf;
   --seq-6: #184f95;
   --seq-7: #0d366b;
+  --cat-1: #2a78d6;
+  --cat-2: #eb6834;
+  --cat-3: #1baf7a;
+  --cat-4: #eda100;
+  --cat-5: #e87ba4;
+  --cat-6: #008300;
+  --yr-1: #86b6ef;
+  --yr-2: #5598e7;
+  --yr-3: #2a78d6;
+  --yr-4: #1c5cab;
+  --yr-5: #104281;
   --seq-text-lo: #121a26;
   --seq-text-hi: #ffffff;
   --st-good: #0ca30c;
@@ -103,6 +114,17 @@
     --seq-5: #3987e5;
     --seq-6: #6da7ec;
     --seq-7: #9ec5f4;
+    --cat-1: #3987e5;
+    --cat-2: #d95926;
+    --cat-3: #199e70;
+    --cat-4: #c98500;
+    --cat-5: #d55181;
+    --cat-6: #008300;
+    --yr-1: #184f95;
+    --yr-2: #256abf;
+    --yr-3: #3987e5;
+    --yr-4: #6da7ec;
+    --yr-5: #9ec5f4;
     --seq-text-lo: #ffffff;
     --seq-text-hi: #0d1219;
     --st-good-ink: #5fd35f;
@@ -149,6 +171,17 @@
   --seq-5: #3987e5;
   --seq-6: #6da7ec;
   --seq-7: #9ec5f4;
+  --cat-1: #3987e5;
+  --cat-2: #d95926;
+  --cat-3: #199e70;
+  --cat-4: #c98500;
+  --cat-5: #d55181;
+  --cat-6: #008300;
+  --yr-1: #184f95;
+  --yr-2: #256abf;
+  --yr-3: #3987e5;
+  --yr-4: #6da7ec;
+  --yr-5: #9ec5f4;
   --seq-text-lo: #ffffff;
   --seq-text-hi: #0d1219;
   --st-good-ink: #5fd35f;
@@ -446,7 +479,7 @@ h1, h2, h3, h4 { margin: 0; text-wrap: balance; }
 .exhibit { border: 1px solid var(--rule); border-radius: 12px; padding: 14px 16px 12px; display: grid; gap: 8px; min-width: 0; }
 .ex-head { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
 .ex-head h4 { font-size: 15px; font-weight: 700; display: flex; gap: 8px; align-items: baseline; }
-.ref { font-family: var(--f-mono); font-size: 11.5px; color: var(--accent); font-weight: 700; }
+.ref { font-family: var(--f-mono); font-size: 11.5px; color: var(--accent); font-weight: 700; white-space: nowrap; }
 .ex-cap { font-size: 12.5px; color: var(--muted); margin: 0; }
 .viz { position: relative; min-width: 0; }
 .viz-plot svg { display: block; max-width: 100%; height: auto; overflow: visible; }
@@ -550,12 +583,25 @@ details.ledger { border: 1px solid var(--rule); border-radius: 10px; padding: 8p
 details.ledger summary { cursor: pointer; font-size: 13px; color: var(--ink-2); }
 details.ledger[open] summary { margin-bottom: 8px; }
 
-/* informe del consultor */
-.memo .memo-sec { display: grid; gap: 8px; max-width: 78ch; }
-.memo .memo-sec h3 { font-family: var(--f-display); font-size: 15px; font-weight: 750; margin: 6px 0 0; color: var(--accent); }
-.memo .memo-sec p, .memo .memo-ol li { font-family: var(--f-serif); font-size: 16px; line-height: 1.55; margin: 0; color: var(--ink); }
-.memo .memo-sec:first-of-type p:first-of-type { font-size: 18px; font-weight: 600; }
-.memo .memo-ol { margin: 0; padding-left: 22px; display: grid; gap: 8px; }
+/* informe del consultor: una frase y un gráfico por sección; el texto completo, plegado */
+.memo .memo-sec { display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr); min-width: 0; padding-bottom: 6px; }
+.memo .memo-sec + .memo-sec { border-top: 1px solid var(--rule); padding-top: 14px; }
+.memo .memo-sec h3 { font-family: var(--f-display); font-size: 15px; font-weight: 750; margin: 0; color: var(--accent); }
+.memo .memo-sec > p, .memo .more-body > p, .memo .memo-ol li { font-family: var(--f-serif); font-size: 16px; line-height: 1.55; margin: 0; color: var(--ink); max-width: 78ch; }
+.memo .memo-lead { font-size: 17.5px !important; font-weight: 600; line-height: 1.45 !important; }
+.memo .memo-sec:first-of-type .memo-lead { font-size: 19px !important; }
+.memo .memo-ol { margin: 0; padding-left: 22px; display: grid; gap: 8px; max-width: 78ch; }
+.memo .more-body > p, .memo .more-body .memo-ol li { font-size: 15px; color: var(--ink-2); }
+/* detalle plegable (informe, pilares y situación) */
+details.more { border-top: 1px solid var(--rule); padding-top: 8px; min-width: 0; }
+details.more > summary { cursor: pointer; font-size: 13.5px; font-weight: 650; color: var(--accent); list-style: none; display: inline-flex; gap: 6px; align-items: center; padding: 2px 0; }
+details.more > summary::-webkit-details-marker { display: none; }
+details.more > summary::before { content: '▸'; font-size: 11px; transition: transform 0.15s; }
+details.more[open] > summary::before { transform: rotate(90deg); }
+details.more > summary:focus-visible { outline: 2px solid var(--accent-2); outline-offset: 2px; border-radius: 4px; }
+details.more > .more-body { display: grid; gap: 12px; margin-top: 10px; min-width: 0; grid-template-columns: minmax(0, 1fr); }
+.scqa-full p { margin: 0; font-size: 14.5px; color: var(--ink-2); max-width: 90ch; }
+.sec > details.more { margin-top: 2px; }
 
 /* escenarios y simulador */
 .scen { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
@@ -746,7 +792,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="busy" id="busy" hidden><div class="box"><b id="busy-text">Procesando…</b><div class="progress"><i></i></div></div></div>
 
-<script>window.V = window.V || {}; V.CONFIG = {"libBase":"vendor/","pwa":true,"version":"2.3.0"};</script>
+<script>window.V = window.V || {}; V.CONFIG = {"libBase":"vendor/","pwa":true,"version":"2.4.0"};</script>
 <script>
 /* ==== 01_util.js ==== */
 /* Vértice · utilidades: formato es-CL, fechas como número de día UTC, estadística, texto */
@@ -6234,27 +6280,63 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const w = t.wide;
     const dimRole = ['sucursal', 'producto', 'categoria', 'canal', 'cliente'].find((r) => colOf(t, r) >= 0);
     const dc = dimRole ? colOf(t, dimRole) : -1;
+    // resúmenes de varios años: un año por fila con los meses en columnas, o un mes por fila con los años en columnas
+    const yc = colOf(t, 'anio');
+    const pc = colOf(t, 'periodo');
+    const yearOfCell = (v) => {
+      const s = v === null || v === undefined ? '' : String(typeof v === 'object' && v.d !== undefined ? '' : v).trim();
+      return /^(19|20)\d{2}$/.test(s) ? +s : null;
+    };
+    const rowYear = (row) => {
+      const y = yc >= 0 ? rawNumAt(t, row, yc) : null;
+      if (y && y >= 1990 && y <= 2100) return Math.round(y);
+      return yearOfCell(row[dc >= 0 ? dc : 0]);
+    };
+    const rowMonth = (row) => {
+      for (const c of [pc, dc, 0]) {
+        if (c < 0 || typeof row[c] !== 'string') continue;
+        const mo = V.S.monthFromName(row[c].trim());
+        if (mo) return mo;
+      }
+      return null;
+    };
+    const byYear = w.periods.every((hp) => hp.grain === 'year');
+    let perRowYear = 0;
+    let monthRows = 0;
     let totals = 0;
     for (const row of t.rows) {
       if (isTotalRow(t, row, dc >= 0 ? [dc] : [])) {
         totals++;
         continue;
       }
+      const ry = w.periods.some((hp) => !hp.key && hp.month) && !w.year ? rowYear(row) : null;
+      const rm = byYear ? rowMonth(row) : null;
+      if (byYear && !rm && t.rows.some((r) => rowMonth(r))) continue; // fila de total anual en una tabla de meses × años
       w.cols.forEach((c, k) => {
         const hp = w.periods[k];
         const v = numAt(t, row, c);
         if (v === null) return;
-        const key = hp.key || (w.year ? U.monthKeyYM(w.year, hp.month) : null);
+        let key = hp.key || (w.year ? U.monthKeyYM(w.year, hp.month) : null);
+        let grain = hp.grain === 'year' ? 'year' : key && /T\d$/.test(key) ? 'quarter' : 'month';
+        if (!key && hp.month && ry) {
+          key = U.monthKeyYM(ry, hp.month);
+          perRowYear++;
+        }
+        if (hp.grain === 'year' && rm) {
+          key = U.monthKeyYM(hp.year, rm);
+          grain = 'month';
+          monthRows++;
+        }
         if (!key) return;
-        const d = hp.grain === 'year' ? U.dayFromYMD(hp.year, 1, 1) : /T\d$/.test(key) ? hp.d : U.monthStart(key);
-        const rec = { d, grain: hp.grain === 'year' ? 'year' : /T\d$/.test(key) ? 'quarter' : 'month', prod: null, sku: null, cat: null, br: null, ch: null, cli: null, ven: null, doc: null, q: null, pr: null, rev: v, cost: null, src: t.id };
-        if (dimRole) rec[{ sucursal: 'br', producto: 'prod', categoria: 'cat', canal: 'ch', cliente: 'cli' }[dimRole]] = textAt(row, dc);
+        const d = grain === 'year' ? U.dayFromYMD(hp.year, 1, 1) : grain === 'quarter' ? hp.d : U.monthStart(key);
+        const rec = { d, grain, prod: null, sku: null, cat: null, br: null, ch: null, cli: null, ven: null, doc: null, q: null, pr: null, rev: v, cost: null, src: t.id };
+        if (dimRole && !(ry && yearOfCell(row[dc]))) rec[{ sucursal: 'br', producto: 'prod', categoria: 'cat', canal: 'ch', cliente: 'cli' }[dimRole]] = textAt(row, dc);
         recs.push(rec);
       });
     }
     lin.used = recs.length;
     if (totals) fix(model, { dataset: 'ventas', table: t.name, title: 'Filas de total excluidas', detail: totals + ' fila(s) de total excluidas.', count: totals });
-    fix(model, { dataset: 'ventas', table: t.name, title: 'Tabla con meses en columnas', detail: 'Se transformó a formato largo (una fila por mes) para analizarla.', count: recs.length });
+    fix(model, { dataset: 'ventas', table: t.name, title: perRowYear ? 'Tabla con un año por fila y los meses en columnas' : monthRows ? 'Tabla con un mes por fila y los años en columnas' : 'Tabla con meses en columnas', detail: 'Se transformó a formato largo (una fila por mes) para analizarla.', count: recs.length });
     return recs;
   };
 
@@ -11255,7 +11337,13 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const byYear = new Map();
       model.sales.forEach((r) => r.d !== null && byYear.set(U.ymd(r.d)[0], (byYear.get(U.ymd(r.d)[0]) || 0) + r.rev));
       const ys = Array.from(byYear.keys()).sort();
-      if (ys.length) ex('A', { kind: 'chart', title: 'Ingresos por año', caption: model.meta.fromStatements ? 'Ingresos de actividades ordinarias según el estado de resultados.' : 'Ventas anuales.', spec: { type: 'bars', orientation: 'h', categories: ys.map(String).reverse(), series: [{ name: 'Ingresos', role: 'cur', values: ys.map((y) => byYear.get(y)).reverse() }], format: 'money' } });
+      if (ys.length) {
+        // hasta cinco años, con la variación frente al año anterior bajo cada columna
+        const yy = ys.slice(-(N.MAX_YEARS || 5));
+        const vals = yy.map((y) => byYear.get(y));
+        const note = yy.map((y, i) => (i > 0 && yy[i - 1] === y - 1 && vals[i - 1] > 0 ? fP(vals[i] / vals[i - 1] - 1, 0) : ''));
+        ex('A', { kind: 'chart', title: 'Ingresos por año', caption: (model.meta.fromStatements ? 'Ingresos de actividades ordinarias según el estado de resultados.' : 'Ventas anuales.') + (yy.length > 1 ? ' Debajo de cada año, la variación frente al anterior.' : ''), spec: { type: 'columns', categories: yy.map(String), series: [{ name: 'Ingresos', role: 'cur', values: vals }], format: 'money', note, tableHead: 'Año' } });
+      }
       if (model.statements && model.statements.periods.length && !(FIN && FIN.hasIncome)) {
         const stc = model.statements;
         const q1 = stc.periods[0];
@@ -11282,6 +11370,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         ex('B', { kind: 'table', title: 'Estado de resultados resumido', caption: 'Cifras del estado de resultados cargado' + (q0 ? ', ' + q1 + ' vs ' + q0 : '') + '. Los márgenes se comparan en puntos porcentuales.', columns: [{ k: 'l', l: 'Partida' }, { k: 'va', l: String(q1), f: 'money' }].concat(q0 ? [{ k: 'vb', l: String(q0), f: 'money' }, { k: 'vd', l: 'Variación', f: 'txt' }] : []), rows: rows.map((r) => ({ l: r.l, va: r.pct ? null : r.a, vb: r.pct ? null : r.b, vd: r.d === null ? '–' : r.pct ? U.fmtPP(r.d) : U.fmtPct(r.d, 1, true), _pa: r.pct ? U.fmtPct(r.a, 1) : null, _pb: r.pct && r.b !== null && r.b !== undefined ? U.fmtPct(r.b, 1) : null })).map((r) => (r._pa ? Object.assign(r, { va: r._pa, vb: r._pb }) : r)) });
       }
     }
+    // A · comparación entre años (primero la película larga: ventas por año, mes a mes y acumuladas)
+    if (N.yearSales && model.meta.salesGrain !== 'year') N.yearSales(model, R, ex);
     // A-1 ingresos mensuales
     if (R.monthly.length >= 3 && P.cur && model.meta.salesGrain !== 'year') {
       const curMonths = U.monthRange(P.cur.fromKey, P.cur.toKey);
@@ -11329,6 +11419,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const bk = R.budget.rev.byKey;
       ex('A', { kind: 'chart', title: 'Ventas vs presupuesto por ' + ({ sucursal: 'sucursal', producto: 'producto', categoria: 'categoría' }[R.budget.rev.keyRole] || 'línea'), caption: 'Desviación % respecto de la meta del período.', spec: { type: 'bars', orientation: 'h', categories: bk.map((x) => x.key), series: [{ name: 'Desviación', role: 'diverge', values: bk.map((x) => x.devPct) }], format: 'pct', diverging: true } });
     }
+    // B, C y D · estados financieros y ratios por año, antes del detalle del período
+    if (FIN && N.yearFin && !BKA) N.yearFin(FIN, ex);
     // B
     if (R.monthly.some((m) => m.gm !== null) && P.cur) {
       const curMonths = U.monthRange(P.cur.fromKey, P.cur.toKey);
@@ -11560,6 +11652,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       rep.memo = V.BK.memo(BKA, rep, company);
       rep.projection = null;
     }
+    // informe del consultor: una frase y un gráfico por sección; el texto completo queda como detalle
+    if (rep.memo && N.memoVisuals) N.memoVisuals(rep.memo, BKA ? null : FIN, rep);
     rep.annex = {
       products: R.products,
       branches: R.branches,
@@ -11910,17 +12004,21 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     ex('D', { kind: 'statements', title: 'Balance general comparativo', caption: 'Estado de situación al cierre de cada período, con la variación del último año y el peso de cada partida sobre el activo total.', data: { rows: FIN.bal, periods: FIN.periods, base: 'activo' } });
     const cf = FIN.cash.length ? FIN.cash[FIN.cash.length - 1] : null;
     if (cf) {
-      const raw = [['Utilidad', cf.ni], ['Depreciación', cf.dep], ['Clientes', cf.dAR], ['Inventario', cf.dInv], ['Impuestos por recuperar', cf.dTaxRec], ['Proveedores', cf.dAP], ['Impuestos y remuneraciones', cf.dTaxL + cf.dPay], ['Otros de operación', cf.dOCA + cf.dOCL], ['Inversión en activo fijo', cf.cfi], ['Préstamos', cf.dDebt], ['Socios y relacionadas', cf.dRel], ['Aportes y retiros', cf.dEq], ['Otros', cf.other]];
-      const big = Math.max(...raw.map((x) => Math.abs(x[1])));
-      const steps = [{ label: 'Caja ' + cf.from, value: FIN.fig[cf.from].cash, kind: 'total' }];
-      let other = 0;
-      raw.forEach(([l, v]) => {
-        if (Math.abs(v) < 0.5) return;
-        if (Math.abs(v) < big * 0.015) other += v;
-        else steps.push({ label: l, value: v, kind: 'delta' });
-      });
-      if (Math.abs(other) >= 0.5) steps.push({ label: 'Menores', value: other, kind: 'delta' });
-      steps.push({ label: 'Caja ' + cf.to, value: FIN.fig[cf.to].cash, kind: 'total' });
+      let steps;
+      if (N.cashSteps) steps = N.cashSteps(FIN).steps;
+      else {
+        const raw = [['Utilidad', cf.ni], ['Depreciación', cf.dep], ['Clientes', cf.dAR], ['Inventario', cf.dInv], ['Impuestos por recuperar', cf.dTaxRec], ['Proveedores', cf.dAP], ['Impuestos y remuneraciones', cf.dTaxL + cf.dPay], ['Otros de operación', cf.dOCA + cf.dOCL], ['Inversión en activo fijo', cf.cfi], ['Préstamos', cf.dDebt], ['Socios y relacionadas', cf.dRel], ['Aportes y retiros', cf.dEq], ['Otros', cf.other]];
+        const big = Math.max(...raw.map((x) => Math.abs(x[1])));
+        steps = [{ label: 'Caja ' + cf.from, value: FIN.fig[cf.from].cash, kind: 'total' }];
+        let other = 0;
+        raw.forEach(([l, v]) => {
+          if (Math.abs(v) < 0.5) return;
+          if (Math.abs(v) < big * 0.015) other += v;
+          else steps.push({ label: l, value: v, kind: 'delta' });
+        });
+        if (Math.abs(other) >= 0.5) steps.push({ label: 'Menores', value: other, kind: 'delta' });
+        steps.push({ label: 'Caja ' + cf.to, value: FIN.fig[cf.to].cash, kind: 'total' });
+      }
       ex('D', { kind: 'chart', title: 'De dónde vino y a dónde fue la caja (' + cf.from + ' → ' + cf.to + ')', caption: 'Flujo de caja indirecto: parte de la utilidad y suma o resta los cambios del balance. Barras hacia abajo = usos de caja (más inventario, más impuestos por recuperar); hacia arriba = fuentes (más crédito de proveedores, préstamos).', spec: { type: 'waterfall', steps, format: 'money' } });
       const cols = [{ k: 'l', l: 'Flujo de caja' }].concat(FIN.cash.map((c, i) => ({ k: 'v' + i, l: c.from + ' → ' + c.to, f: 'money' })));
       const line = (l, key, sign) => {
@@ -12165,6 +12263,428 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     lim.push('Las proyecciones usan supuestos simples y transparentes (se pueden cambiar en el simulador): no reemplazan un presupuesto detallado.');
     S('10. Límites de este análisis', lim);
     return { title: 'Informe del consultor', subtitle: company + ' · ejercicio ' + p + (p0 ? ' comparado con ' + p0 : ''), sections: secs, adjusted: adj };
+  };
+})(typeof globalThis !== 'undefined' ? (globalThis.V = globalThis.V || {}) : (window.V = window.V || {}));
+
+/* ==== 08c_years.js ==== */
+/* Vértice · comparación entre años (sin IA): gráficos de ventas, estados financieros y ratios de hasta cinco
+   años cerrados más el año en curso, y el resumen visual del informe del consultor (una frase y un gráfico por
+   sección; el texto completo queda como detalle). */
+(function (V) {
+  'use strict';
+  const U = V.U;
+  const N = V.N;
+  const f$ = (x) => U.fmtMoney(x, { compact: true });
+  const fp = (x, d) => U.fmtPct(x, d === undefined ? 1 : d);
+  const fP = (x, d) => U.fmtPct(x, d === undefined ? 1 : d, true);
+  const fN = (x, d) => U.fmtNum(x, d || 0);
+  const has = (x) => x !== null && x !== undefined && isFinite(x);
+  const cap1 = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+  const low1 = (s) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+  const MAX_YEARS = 5;
+  N.MAX_YEARS = MAX_YEARS;
+
+  /* primera oración de un texto (sin cortar en abreviaturas como "art." o "N°") */
+  N.firstSentence = function (t) {
+    if (!t) return '';
+    const s = String(t);
+    const re = /([.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡«(])/g;
+    let m;
+    while ((m = re.exec(s))) {
+      const before = s.slice(Math.max(0, m.index - 7), m.index + 1);
+      if (/\b(art|arts|n°|nº|sr|sra|dr|etc|aprox|núm|pág|vs|ej)\.$/i.test(before)) continue;
+      return s.slice(0, m.index + 1);
+    }
+    return s;
+  };
+
+  /* oración que resume un párrafo: la primera; si no trae cifras, se suma la siguiente (donde suelen estar) */
+  N.keySentence = function (t) {
+    const s = String(t || '');
+    const first = N.firstSentence(s);
+    if (first === s || /\d/.test(first)) return first;
+    const second = N.firstSentence(s.slice(first.length).trim());
+    return (first + ' ' + second).length <= 240 ? first + ' ' + second : second;
+  };
+
+  /* ---------- ventas por año, mes a mes y acumuladas (pilar A) ---------- */
+  N.yearSales = function (model, R, ex0) {
+    const out = {};
+    const ex = (pl, o) => ex0(pl, Object.assign(o, { years: true }));
+    const byYear = new Map();
+    (R.monthly || []).forEach((m) => {
+      if (!m.salesMonth || m.partial || !has(m.rev)) return;
+      const y = +m.key.slice(0, 4);
+      const mo = +m.key.slice(5, 7);
+      const o = byYear.get(y) || { y, months: new Map() };
+      o.months.set(mo, m.rev);
+      byYear.set(y, o);
+    });
+    const years = Array.from(byYear.keys()).sort((a, b) => a - b);
+    if (years.length < 2) return out;
+    const sumMonths = (y, from, to) => {
+      const o = byYear.get(y);
+      let s = 0;
+      for (let mo = from; mo <= to; mo++) {
+        if (!o || !o.months.has(mo)) return null;
+        s += o.months.get(mo);
+      }
+      return s;
+    };
+    const full = years.filter((y) => byYear.get(y).months.size === 12);
+    const lastY = years[years.length - 1];
+    const lastO = byYear.get(lastY);
+    const lastMonths = Array.from(lastO.months.keys()).sort((a, b) => a - b);
+    // meses consecutivos desde enero en el último año (para comparar el acumulado)
+    let ytdM = 0;
+    while (lastO.months.has(ytdM + 1)) ytdM++;
+    const lastPartial = lastO.months.size < 12;
+
+    // A · ventas por año (años completos y el año en curso, marcado)
+    const ysA = full.length >= 2 ? full.slice(-MAX_YEARS).concat(lastPartial && lastY > full[full.length - 1] ? [lastY] : []) : [];
+    if (ysA.length >= 3) {
+      const ys = ysA;
+      const vals = ys.map((y) => (byYear.get(y).months.size === 12 ? sumMonths(y, 1, 12) : U.sum(Array.from(byYear.get(y).months.values()), (v) => v)));
+      const partial = ys.map((y) => byYear.get(y).months.size < 12);
+      const note = ys.map((y, i) => {
+        if (partial[i]) {
+          const ms = Array.from(byYear.get(y).months.keys()).sort((a, b) => a - b);
+          return U.MONTHS_SHORT[ms[0] - 1] + (ms.length > 1 ? '–' + U.MONTHS_SHORT[ms[ms.length - 1] - 1] : '');
+        }
+        const j = i - 1;
+        return j >= 0 && !partial[j] && vals[j] > 0 ? fP(vals[i] / vals[j] - 1, 0) : '';
+      });
+      const fy = ys.filter((y, i) => !partial[i]);
+      const fv = vals.filter((v, i) => !partial[i]);
+      const cagr = fy.length >= 3 && fv[0] > 0 && fv[fv.length - 1] > 0 ? Math.pow(fv[fv.length - 1] / fv[0], 1 / (fy[fy.length - 1] - fy[0])) - 1 : null;
+      const g = fv.length >= 2 && fv[fv.length - 2] > 0 ? fv[fv.length - 1] / fv[fv.length - 2] - 1 : null;
+      const title = 'Ventas por año' + (has(cagr) ? ': ' + (cagr >= 0 ? 'crecen ' : 'caen ') + fp(Math.abs(cagr), 0) + ' al año desde ' + fy[0] : has(g) ? ': ' + fP(g, 0) + ' en ' + fy[fy.length - 1] : '');
+      out.byYear = ex('A', { kind: 'chart', title, caption: 'Ventas de cada año calendario; debajo, la variación frente al año anterior.' + (partial.some(Boolean) ? ' La barra clara es el año en curso, con solo los meses indicados: compárala con el gráfico de ventas acumuladas.' : ''), spec: { type: 'columns', categories: ys.map(String), series: [{ name: 'Ventas', role: 'cur', values: vals }], format: 'money', partial, note, tableHead: 'Año', noteHead: 'Variación o meses' } });
+    }
+
+    // A · ventas mes a mes, una línea por año (hasta cinco años)
+    const lineYears = years.filter((y) => byYear.get(y).months.size >= 3).slice(-MAX_YEARS);
+    if (lineYears.length >= 3) {
+      const tones = V.C ? V.C.yearTones(lineYears.length) : lineYears.map((y, i) => i);
+      const series = lineYears.map((y, i) => ({ name: String(y), tone: tones[i], role: i === lineYears.length - 1 ? 'cur' : 'yr', values: Array.from({ length: 12 }, (v, k) => (byYear.get(y).months.has(k + 1) ? byYear.get(y).months.get(k + 1) : null)) }));
+      const ly = lineYears[lineYears.length - 1];
+      const py = lineYears[lineYears.length - 2];
+      let g = null;
+      let span = '';
+      if (ly - py === 1) {
+        const ms = Array.from(byYear.get(ly).months.keys()).filter((mo) => byYear.get(py).months.has(mo));
+        const a = U.sum(ms, (mo) => byYear.get(ly).months.get(mo));
+        const b = U.sum(ms, (mo) => byYear.get(py).months.get(mo));
+        if (ms.length && b > 0) {
+          g = a / b - 1;
+          span = ms.length === 12 ? '' : ' en los mismos meses';
+        }
+      }
+      out.monthly = ex('A', { kind: 'chart', title: 'Ventas mes a mes por año' + (has(g) ? ': ' + ly + (span ? ' va ' : ' ') + fP(g, 0) + ' frente a ' + py + span : ''), caption: 'Una línea por año (' + U.listJoin(lineYears.map(String)) + '); la más oscura es ' + ly + '. Los meses sin datos o incompletos quedan en blanco.', spec: { type: 'line', x: U.MONTHS_SHORT.map((m, k) => String(k + 1).padStart(2, '0')), xLabels: U.MONTHS_SHORT, tableX: U.MONTHS.map(cap1), tableHead: 'Mes', series, format: 'money' } });
+    }
+
+    // A · ventas acumuladas de enero al último mes, comparadas con los mismos meses de años anteriores
+    if (lastPartial && ytdM >= 1 && ytdM < 12 && lastMonths[0] === 1) {
+      const ys = years.filter((y) => y < lastY && sumMonths(y, 1, ytdM) !== null).slice(-(MAX_YEARS - 1)).concat([lastY]);
+      if (ys.length >= 2) {
+        const vals = ys.map((y) => sumMonths(y, 1, ytdM));
+        const note = ys.map((y, i) => (i > 0 && ys[i - 1] === y - 1 && vals[i - 1] > 0 ? fP(vals[i] / vals[i - 1] - 1, 0) : ''));
+        const span = U.MONTHS[0] + (ytdM > 1 ? ' a ' + U.MONTHS[ytdM - 1] : '');
+        const g = ys[ys.length - 2] === lastY - 1 && vals[vals.length - 2] > 0 ? vals[vals.length - 1] / vals[vals.length - 2] - 1 : null;
+        out.ytd = ex('A', { kind: 'chart', title: 'Ventas de ' + span + ' de cada año' + (has(g) ? ': ' + lastY + ' ' + fP(g, 0) + ' frente a ' + (lastY - 1) : ''), caption: 'Los mismos meses de cada año, para medir el año en curso sin esperar al cierre. Destacado: ' + lastY + '.', spec: { type: 'columns', categories: ys.map(String), series: [{ name: 'Ventas ' + span, role: 'cur', values: vals }], format: 'money', emph: ys.length - 1, note, tableHead: 'Año' } });
+      }
+    }
+    return out;
+  };
+
+  /* ---------- estados financieros y ratios por año (pilares B, C y D) ---------- */
+  // períodos para los gráficos: hasta cinco años completos más el período parcial más reciente
+  N.finYears = function (FIN) {
+    const ps = FIN.periods;
+    const isFull = (p) => (FIN.fig[p].months || 12) >= 12;
+    let list = ps.filter(isFull).slice(-MAX_YEARS);
+    const last = ps[ps.length - 1];
+    if (!isFull(last) && list.indexOf(last) < 0) list = list.concat([last]);
+    list = ps.filter((p) => list.indexOf(p) >= 0);
+    const unrel = FIN.audit.some((x) => x.id === 'no-cogs' || x.id === 'inv-frozen' || (x.id === 'st-notes' && x.sev === 'high'));
+    return {
+      list,
+      partial: list.map((p) => !isFull(p)),
+      // flujos del último período que los propios estados advierten incompletos (inventario sin contar, sin costo de ventas)
+      unreliable: list.map((p) => p === FIN.last && unrel),
+    };
+  };
+  const label = (FIN, p) => String(p);
+
+  /* puente del ingreso a la utilidad de un período */
+  N.incomeBridge = function (FIN, p) {
+    const f = FIN.fig[p];
+    if (!f || !(f.rev > 0)) return null;
+    const nz = (x) => (has(x) ? x : 0);
+    const dep = nz(f.dep);
+    const opexCash = nz(f.opex) - (dep && nz(f.opex) >= dep ? dep : 0);
+    const steps = [{ label: 'Ventas', value: f.rev, kind: 'total' }];
+    if (Math.abs(nz(f.cogs)) > 0.5) {
+      steps.push({ label: 'Costo', full: 'Costo de ventas', value: -Math.abs(f.cogs), kind: 'delta' });
+      steps.push({ label: 'Margen bruto', value: f.gp, kind: 'total' });
+    }
+    if (Math.abs(opexCash) > 0.5) steps.push({ label: 'Gastos', full: 'Gastos de operación', value: -opexCash, kind: 'delta' });
+    if (dep > 0.5 && nz(f.opex) >= dep) steps.push({ label: 'Depreciación', value: -dep, kind: 'delta' });
+    steps.push({ label: 'Operacional', full: 'Resultado operacional', value: f.ebit, kind: 'total' });
+    const other = nz(f.othinc) - nz(f.othexp);
+    const fin = nz(f.int);
+    const rest = f.ebt - f.ebit - other + fin;
+    if (Math.abs(other + rest) > Math.abs(f.rev) * 0.002) steps.push({ label: 'Otros', full: 'Otros resultados (fuera de la operación)', value: other + rest, kind: 'delta' });
+    if (fin > 0.5) steps.push({ label: 'Intereses', full: 'Gastos financieros', value: -fin, kind: 'delta' });
+    if (Math.abs(nz(f.tax)) > 0.5) steps.push({ label: 'Impuesto', value: -f.tax, kind: 'delta' });
+    steps.push({ label: 'Resultado', full: 'Resultado del ejercicio', value: f.ni, kind: 'total' });
+    return steps;
+  };
+
+  /* de dónde vino y a dónde fue la caja entre los dos últimos balances */
+  N.cashSteps = function (FIN) {
+    const cf = FIN.cash && FIN.cash.length ? FIN.cash[FIN.cash.length - 1] : null;
+    if (!cf) return null;
+    // [etiqueta corta del gráfico, nombre completo de la tabla, monto]
+    const raw = [['Utilidad', 'Utilidad del ejercicio', cf.ni], ['Depreciación', 'Depreciación', cf.dep], ['Clientes', 'Variación de clientes', cf.dAR], ['Inventario', 'Variación del inventario', cf.dInv], ['Impuestos', 'Impuestos por recuperar', cf.dTaxRec], ['Proveedores', 'Variación de proveedores', cf.dAP], ['Imp. y sueldos', 'Impuestos y remuneraciones por pagar', cf.dTaxL + cf.dPay], ['Otros oper.', 'Otros de operación', cf.dOCA + cf.dOCL], ['Activo fijo', 'Inversión en activo fijo', cf.cfi], ['Préstamos', 'Préstamos', cf.dDebt], ['Socios', 'Socios y relacionadas', cf.dRel], ['Aportes', 'Aportes y retiros', cf.dEq], ['Otros', 'Otros y diferencias', cf.other]];
+    const big = Math.max(...raw.map((x) => Math.abs(x[2])));
+    const steps = [{ label: 'Caja ' + cf.from, value: FIN.fig[cf.from].cash, kind: 'total' }];
+    let other = 0;
+    raw.forEach(([l, full, v]) => {
+      if (Math.abs(v) < 0.5) return;
+      if (Math.abs(v) < big * 0.015) other += v;
+      else steps.push({ label: l, full, value: v, kind: 'delta' });
+    });
+    if (Math.abs(other) >= 0.5) steps.push({ label: 'Menores', full: 'Partidas menores', value: other, kind: 'delta' });
+    steps.push({ label: 'Caja ' + cf.to, value: FIN.fig[cf.to].cash, kind: 'total' });
+    return { cf, steps };
+  };
+
+  N.yearFin = function (FIN, ex0) {
+    const out = {};
+    const ex = (pl, o) => ex0(pl, Object.assign(o, { years: true }));
+    const Y = N.finYears(FIN);
+    const ps = Y.list;
+    if (ps.length < 2) return out;
+    const fig = (p) => FIN.fig[p];
+    const k = (p) => FIN.k[p] || {};
+    const flag = ps.map((p, i) => Y.partial[i] || Y.unreliable[i]);
+    const anyUnrel = Y.unreliable.some(Boolean);
+    const lastP = ps[ps.length - 1];
+    const partNote = (Y.partial.some(Boolean) ? ' ' + U.listJoin(ps.filter((p, i) => Y.partial[i])) + ' es un período parcial' + (anyUnrel ? ' y sus estados advierten que están incompletos' : '') + ' (punto hueco o barra clara).' : anyUnrel ? ' Los estados de ' + lastP + ' advierten que están incompletos (punto hueco).' : '');
+    const cats = ps.map((p) => label(FIN, p));
+    const hasInc = ps.filter((p) => fig(p).rev > 0).length >= 2;
+    const hasBal = ps.filter((p) => fig(p).ta > 0).length >= 2;
+    // último período con resultados confiables (el de referencia para los títulos)
+    const relIdx = (() => {
+      for (let i = ps.length - 1; i >= 0; i--) if (!flag[i] && fig(ps[i]).rev > 0) return i;
+      return ps.length - 1;
+    })();
+    const relP = ps[relIdx];
+
+    // B · márgenes por año
+    if (hasInc) {
+      const mk = (name, cat, key) => ({ name, cat, values: ps.map((p) => (fig(p).rev > 0 && has(k(p)[key]) ? k(p)[key] : null)) });
+      const series = [mk('Margen bruto', 0, 'gm'), mk('Margen operacional', 1, 'opm'), mk('Margen neto', 2, 'nm')].filter((s) => s.values.filter(has).length >= 2);
+      if (series.length) {
+        const op = series.find((s) => s.name === 'Margen operacional') || series[0];
+        const i0 = op.values.findIndex(has);
+        const t = has(op.values[relIdx]) && i0 >= 0 && i0 < relIdx ? ': el ' + low1(op.name.replace('Margen ', 'margen ')) + ' pasó de ' + fp(op.values[i0]) + ' en ' + ps[i0] + ' a ' + fp(op.values[relIdx]) + ' en ' + relP : '';
+        out.margins = ex('B', { kind: 'chart', title: 'Márgenes por año' + t, caption: 'Cada margen como % de las ventas del período.' + partNote, spec: { type: 'line', x: ps, xLabels: cats, tableX: cats, tableHead: 'Período', series, format: 'pct', dots: true, partial: flag, clip: { min: -0.6, max: 1 } } });
+      }
+      // B · resultado del ejercicio por año (ganancia en azul, pérdida en rojo)
+      const ni = ps.map((p) => (has(fig(p).ni) ? fig(p).ni : null));
+      if (ni.filter(has).length >= 2) {
+        const lossYears = ps.filter((p, i) => has(ni[i]) && ni[i] < 0 && !flag[i]);
+        const t = lossYears.length && ni[relIdx] > 0 ? ': ganancia de ' + f$(ni[relIdx]) + ' en ' + relP + ' tras ' + (lossYears.length === 1 ? 'la pérdida de ' + lossYears[0] : 'pérdidas en ' + U.listJoin(lossYears)) : has(ni[relIdx]) ? ': ' + (ni[relIdx] >= 0 ? 'ganancia' : 'pérdida') + ' de ' + f$(Math.abs(ni[relIdx])) + ' en ' + relP : '';
+        out.ni = ex('B', { kind: 'chart', title: 'Resultado del ejercicio por año' + t, caption: 'Azul: ganancia; rojo: pérdida.' + (Y.partial.some(Boolean) ? ' La barra clara es un período parcial: suma solo sus meses.' : ''), spec: { type: 'columns', categories: cats, series: [{ name: 'Resultado del ejercicio', values: ni }], format: 'money', signColor: true, partial: Y.partial, tableHead: 'Período' } });
+      }
+      // B · del ingreso a la utilidad (último período confiable)
+      const steps = N.incomeBridge(FIN, relP);
+      if (steps && steps.length >= 4) {
+        const f = fig(relP);
+        const per100 = f.rev > 0 ? (f.ni / f.rev) * 100 : null;
+        out.bridge = ex('B', { kind: 'chart', title: 'Del ingreso a la utilidad en ' + relP + (has(per100) ? ': de cada $ 100 vendidos ' + (per100 >= 0 ? 'quedan $ ' + fN(per100) + ' de resultado' : 'se pierden $ ' + fN(Math.abs(per100))) : ''), caption: 'Ventas menos costo, gastos, intereses e impuesto, paso a paso.' + (relP !== lastP ? ' Se usa ' + relP + ' porque los estados de ' + lastP + ' están incompletos.' : ''), spec: { type: 'waterfall', steps, format: 'money' } });
+      }
+      // B · rentabilidad por año
+      const roe = { name: 'Rentabilidad del patrimonio (ROE)', cat: 0, values: ps.map((p) => (has(k(p).roe) ? k(p).roe : null)) };
+      const roa = { name: 'Rentabilidad del activo (ROA)', cat: 1, values: ps.map((p) => (has(k(p).roa) ? k(p).roa : null)) };
+      const rs = [roe, roa].filter((s) => s.values.filter(has).length >= 2);
+      if (rs.length) out.returns = ex('B', { kind: 'chart', title: 'Rentabilidad por año' + (has(roa.values[relIdx]) ? ': el activo rinde ' + fp(roa.values[relIdx]) + ' en ' + relP : ''), caption: 'ROE = utilidad / patrimonio promedio; ROA = utilidad / activo promedio. Los períodos parciales se anualizan.' + (roe.values.some((v, i) => !has(v) && fig(ps[i]).eq <= 0) ? ' Sin ROE en los años con patrimonio negativo.' : '') + partNote, spec: { type: 'line', x: ps, xLabels: cats, tableX: cats, tableHead: 'Período', series: rs, format: 'pct', dots: true, partial: flag, clip: { min: -1, max: 1.5 } } });
+    }
+
+    // C · días de cobro, inventario y pago
+    {
+      // solo períodos con balance (sin clientes, inventario ni proveedores no hay días que medir)
+      const mk = (name, cat, key) => ({ name, cat, values: ps.map((p) => (fig(p).ta > 0 && has(k(p)[key]) && k(p)[key] > 0 && k(p)[key] < 2000 ? k(p)[key] : null)) });
+      const series = [mk('Días de cobro', 0, 'dso'), mk('Días de inventario', 1, 'dio'), mk('Días de pago', 2, 'dpo')].filter((s) => s.values.filter(has).length >= 2);
+      if (series.length) {
+        const ccc = k(relP).ccc;
+        out.days = ex('C', { kind: 'chart', title: 'Días de cobro, inventario y pago por año' + (has(ccc) ? (ccc < 0 ? ': en ' + relP + ' los proveedores financian el ciclo (' + fN(ccc) + ' días)' : ': ciclo de caja de ' + fN(ccc) + ' días en ' + relP) : ''), caption: 'Cobro: clientes / ventas × 365. Inventario y pago: sobre el costo de ventas. Ciclo de caja = cobro + inventario − pago.' + partNote, spec: { type: 'line', x: ps, xLabels: cats, tableX: cats, tableHead: 'Período', series, format: 'days', dots: true, partial: flag, clip: { max: 400 } } });
+      }
+    }
+
+    if (hasBal) {
+      const bp = ps.filter((p) => fig(p).ta > 0);
+      const bcats = bp.map((p) => label(FIN, p));
+      const bpart = bp.map((p) => (fig(p).months || 12) < 12);
+      const nz = (x) => (has(x) ? x : 0);
+      // D · composición del activo
+      const fixed = (f) => nz(f.ppe) + nz(f.intang);
+      const aSeries = [
+        // colores fijos por partida, elegidos para que dos partes vecinas siempre se distingan (también con daltonismo),
+        // aunque falten clientes, inventario u otros activos
+        { name: 'Caja', cat: 0, values: bp.map((p) => nz(fig(p).cash)) },
+        { name: 'Clientes', cat: 4, values: bp.map((p) => nz(fig(p).ar)) },
+        { name: 'Inventario', cat: 5, values: bp.map((p) => nz(fig(p).inv)) },
+        { name: 'Activo fijo', cat: 3, values: bp.map((p) => fixed(fig(p))) },
+        { name: 'Otros activos', cat: 2, values: bp.map((p) => fig(p).ta - nz(fig(p).cash) - nz(fig(p).ar) - nz(fig(p).inv) - fixed(fig(p))) },
+      ].filter((s) => s.values.some((v) => Math.abs(v) > 0.5));
+      if (aSeries.length >= 2) {
+        const fL = fig(bp[bp.length - 1]);
+        const shares = aSeries.map((s) => ({ n: s.name, v: s.values[s.values.length - 1] })).sort((a, b) => b.v - a.v);
+        out.assets = ex('D', { kind: 'chart', title: 'Composición del activo por año: ' + low1(shares[0].n) + ' pesa ' + fp(shares[0].v / fL.ta, 0) + ' en ' + bp[bp.length - 1], caption: 'Activo total al cierre de cada período, separado en sus partes. Arriba de cada columna, el total.' + (bp.length > 1 && fig(bp[0]).ta > 0 ? ' El activo pasó de ' + f$(fig(bp[0]).ta) + ' a ' + f$(fL.ta) + '.' : ''), spec: { type: 'columns', stacked: true, categories: bcats, series: aSeries, format: 'money', partial: bpart.map(() => false), tableHead: 'Cierre' } });
+      }
+      // D · cómo se financia el activo
+      const debt = (f) => nz(f.stdebt) + nz(f.ltdebt);
+      const lSeries = [
+        // mismo criterio: el patrimonio (azul) puede quedar bajo cero junto a cualquier otra parte
+        { name: 'Proveedores', cat: 2, values: bp.map((p) => nz(fig(p).ap)) },
+        { name: 'Otros pasivos', cat: 3, values: bp.map((p) => nz(fig(p).tl) - nz(fig(p).ap) - debt(fig(p)) - nz(fig(p).related)) },
+        { name: 'Deuda financiera', cat: 4, values: bp.map((p) => debt(fig(p))) },
+        { name: 'Socios y relacionadas', cat: 5, values: bp.map((p) => nz(fig(p).related)) },
+        { name: 'Patrimonio', cat: 0, values: bp.map((p) => nz(fig(p).eq)) },
+      ].filter((s) => s.values.some((v) => Math.abs(v) > 0.5));
+      if (lSeries.length >= 2) {
+        const fL = fig(bp[bp.length - 1]);
+        const neg = bp.filter((p) => fig(p).eq < 0);
+        out.liab = ex('D', { kind: 'chart', title: 'Cómo se financia el activo por año: ' + (fL.eq > 0 ? 'el patrimonio aporta ' + fp(fL.eq / fL.ta, 0) + ' en ' + bp[bp.length - 1] : 'el patrimonio es negativo en ' + bp[bp.length - 1]), caption: 'Pasivos y patrimonio al cierre de cada período (suman el activo total).' + (neg.length ? ' En ' + U.listJoin(neg) + ' el patrimonio fue negativo: su parte (azul) queda bajo cero.' : ''), spec: { type: 'columns', stacked: true, categories: bcats, series: lSeries, format: 'money', tableHead: 'Cierre' } });
+      }
+      // D · liquidez
+      const liq = { name: 'Liquidez corriente', cat: 0, values: ps.map((p) => (has(k(p).liq) ? k(p).liq : null)) };
+      const quick = { name: 'Prueba ácida (sin inventario)', cat: 1, values: ps.map((p) => (has(k(p).quick) ? k(p).quick : null)) };
+      const ls = [liq, quick].filter((s) => s.values.filter(has).length >= 2);
+      if (ls.length) {
+        const v = liq.values[liq.values.length - 1];
+        out.liq = ex('D', { kind: 'chart', title: 'Liquidez por año' + (has(v) ? ': ' + U.fmtMoney(v, { decimals: 2 }) + ' de activo corriente por cada $ 1 de deuda de corto plazo (' + lastP + ')' : ''), caption: 'Activo corriente / pasivo corriente. Bajo 1,0 (línea punteada), lo que vence en el año supera lo que se puede convertir en caja.', spec: { type: 'line', x: ps, xLabels: cats, tableX: cats, tableHead: 'Período', series: ls, format: 'x', dots: true, partial: Y.partial, refLines: [{ value: 1, label: '1,0' }], clip: { max: 4 } } });
+      }
+      // D · Z″ de Altman con sus zonas
+      const z = ps.map((p) => (k(p).z ? k(p).z.z : null));
+      if (z.filter(has).length >= 2) {
+        const zr = k(relP).z;
+        out.z = ex('D', { kind: 'chart', title: 'Z″ de Altman por año' + (zr ? ': zona ' + zr.zone + ' en ' + relP + ' (' + fN(zr.z, 2) + ')' : ''), caption: 'Puntaje de riesgo de insolvencia (Altman, 1995, empresas no manufactureras): sobre 2,6 zona segura; entre 1,1 y 2,6 zona gris; bajo 1,1 zona de riesgo.' + partNote, spec: { type: 'line', x: ps, xLabels: cats, tableX: cats, tableHead: 'Período', series: [{ name: 'Z″ de Altman', role: 'cur', values: z }], format: 'x', dots: true, partial: flag, yMax: 3, clip: { min: -4, max: 8 }, bands: [{ from: null, to: 1.1, tone: 'critical', label: 'Zona de riesgo (bajo 1,1)' }, { from: 1.1, to: 2.6, tone: 'warning', label: 'Zona gris' }, { from: 2.6, to: null, tone: 'good', label: 'Zona segura (sobre 2,6)' }] } });
+      }
+    }
+    return out;
+  };
+
+  /* ---------- informe del consultor: una frase y un gráfico por sección ---------- */
+  const shortTitle = (t) => {
+    const s = String(t || '').replace(/\s*\(.*?\)\s*/g, ' ').trim();
+    return s.length > 46 ? s.slice(0, 44).replace(/\s+\S*$/, '') + '…' : s;
+  };
+  // nombre breve de cada hallazgo para los gráficos (el monto va en la barra; el detalle, en la tabla del pilar D)
+  const AUDIT_LABEL = {
+    'st-notes': 'Advertencias de los estados', 'no-dep': 'Depreciación no registrada', 'no-tax': 'Impuesto sin provisión', 'debt-no-int': 'Préstamo sin intereses', 'gm-jump': 'Salto del margen bruto', 'inv-frozen': 'Inventario sin contar', 'no-cogs': 'Sin costo de ventas',
+    susp: 'Cuentas por conciliar o sin rendir', rel: 'Saldos con socios y relacionadas', inverted: 'Saldos con signo contrario', 'payroll-frozen': 'Cotizaciones sin movimiento', cutoff: 'Meses de gasto sin ventas', 'tax-basis': 'Estados sobre base del F22',
+    'ifrs-bio': 'Activos biológicos (NIIF, sección 34)', 'ifrs-dt': 'Impuestos diferidos (NIIF, sección 29)', 'ifrs-vac': 'Provisión de vacaciones (NIIF, sección 28)',
+    vat: 'IVA por recuperar', 'ppm-rate': 'PPM sobre la tasa del régimen', 'nc-high': 'Notas de crédito altas', 'personal-exp': 'Gastos de perfil personal', fees: 'Honorarios', 'hon-ret': 'Retenciones de honorarios', 'f22-rate': 'Tasa de impuesto del F22',
+  };
+  const auditLabel = (x) => {
+    const key = Object.keys(AUDIT_LABEL).find((kk) => x.id === kk || x.id.indexOf(kk + '-') === 0);
+    if (key === 'vat' && /exportador/i.test(x.detail || '')) return 'Devolución de IVA exportador';
+    return key ? AUDIT_LABEL[key] : shortTitle(x.title);
+  };
+  N.auditLabel = auditLabel;
+  const auditBars = (items, title, caption) => {
+    const xs = items.filter((x) => has(x.impact) && Math.abs(x.impact) > 0.5).sort((a, b) => Math.abs(b.impact) - Math.abs(a.impact)).slice(0, 8);
+    if (xs.length < 2) return null;
+    const lvl = { high: 'alta', medium: 'media', low: 'baja' };
+    return { title, caption, spec: { type: 'bars', orientation: 'h', categories: xs.map(auditLabel), series: [{ name: 'Monto involucrado', role: 'status', values: xs.map((x) => Math.abs(x.impact)), status: xs.map((x) => (x.sev === 'high' ? 'high' : x.sev === 'medium' ? 'medium' : 'low')) }], format: 'money', note: xs.map((x) => 'prioridad ' + (lvl[x.sev] || 'baja')) } };
+  };
+  N.memoVisuals = function (memo, FIN, rep) {
+    if (!memo || !memo.sections) return memo;
+    const get = (id) => (FIN ? FIN.audit.find((x) => x.id === id) : null);
+    const charts = {};
+    if (FIN) {
+      const Y = N.finYears(FIN);
+      const ps = Y.list;
+      const relIdx = (() => {
+        for (let i = ps.length - 1; i >= 0; i--) if (!(Y.partial[i] || Y.unreliable[i]) && FIN.fig[ps[i]].rev > 0) return i;
+        return ps.length - 1;
+      })();
+      const relP = ps[relIdx] || FIN.last;
+      const fR = FIN.fig[relP];
+      const kR = FIN.k[relP] || {};
+      // 1 · conclusión: utilidad informada y ajustada
+      const adj = memo.adjusted;
+      if (adj && adj.adj && adj.adj.length) charts[1] = { lead: null, title: 'La utilidad de ' + adj.period + ' con los ajustes que faltan: de ' + f$(adj.ni) + ' a ' + f$(adj.niAdj), caption: 'Ajustes estimados a partir de los hallazgos contables (depreciación, intereses, impuesto).', spec: { type: 'waterfall', steps: [{ label: 'Informado', value: adj.ni, kind: 'total' }].concat(adj.adj.map((x) => ({ label: shortTitle(x.l).split(' ').slice(0, 2).join(' '), value: x.v, kind: 'delta' }))).concat([{ label: 'Ajustado', value: adj.niAdj, kind: 'total' }]), format: 'money' } };
+      // 2 · resultados: puente del ingreso a la utilidad
+      const steps = N.incomeBridge(FIN, relP);
+      const f0 = ps[relIdx - 1] ? FIN.fig[ps[relIdx - 1]] : null;
+      const sameLen = f0 && (f0.months || 12) === (fR.months || 12);
+      const g = sameLen && f0.rev > 0 ? fR.rev / f0.rev - 1 : null;
+      charts[2] = {
+        lead: fR.rev > 0 ? 'En ' + relP + ' las ventas fueron ' + f$(fR.rev) + (has(g) ? ' (' + fP(g, 0) + ' frente a ' + ps[relIdx - 1] + ')' : '') + ' y el resultado operacional ' + f$(fR.ebit) + (has(kR.opm) ? ', un margen de ' + fp(kR.opm) : '') + '.' + (relP !== FIN.last ? ' Los estados de ' + FIN.last + ' están incompletos.' : '') : null,
+        title: steps ? 'Del ingreso a la utilidad en ' + relP : null,
+        caption: 'Ventas menos costo, gastos, intereses e impuesto, paso a paso.',
+        spec: steps && steps.length >= 4 ? { type: 'waterfall', steps, format: 'money' } : null,
+      };
+      // 3 · cómo se financió: flujo de caja
+      const cs = N.cashSteps(FIN);
+      if (cs) {
+        const cf = cs.cf;
+        charts[3] = { lead: 'En ' + cf.to + ' la operación ' + (cf.cfo >= 0 ? 'dejó ' + f$(cf.cfo) : 'consumió ' + f$(Math.abs(cf.cfo))) + ' de caja' + (cf.dDebt > 0.5 ? ', los préstamos aportaron ' + f$(cf.dDebt) : '') + ' y la caja ' + (cf.dCash >= 0 ? 'subió ' : 'bajó ') + f$(Math.abs(cf.dCash)) + '.', title: 'De dónde vino y a dónde fue la caja (' + cf.from + ' → ' + cf.to + ')', caption: 'Barras hacia arriba = fuentes de caja; hacia abajo = usos.', spec: { type: 'waterfall', steps: cs.steps, format: 'money' } };
+      }
+      // 4 · solidez: Z″ por año (o liquidez)
+      const z = ps.map((p) => (FIN.k[p] && FIN.k[p].z ? FIN.k[p].z.z : null));
+      const kL = FIN.k[FIN.last] || {};
+      const zr = kR.z;
+      const lead4 = (has(kL.liq) ? 'Liquidez corriente de ' + U.fmtMoney(kL.liq, { decimals: 2 }) + ' en ' + FIN.last : '') + (zr ? (has(kL.liq) ? ' y ' : '') + 'Z″ de Altman en zona ' + zr.zone + ' en ' + relP + ' (' + fN(zr.z, 2) + ')' : '') + (FIN.fig[FIN.last].eq <= 0 ? '; el patrimonio es negativo' : '') + '.';
+      if (z.filter(has).length >= 2) charts[4] = { lead: lead4.length > 2 ? lead4 : null, title: 'Z″ de Altman por año', caption: 'Sobre 2,6 zona segura; entre 1,1 y 2,6 zona gris; bajo 1,1 zona de riesgo.', spec: { type: 'line', x: ps, xLabels: ps.map(String), tableX: ps.map(String), tableHead: 'Período', series: [{ name: 'Z″ de Altman', role: 'cur', values: z }], format: 'x', dots: true, partial: ps.map((p, i) => Y.partial[i] || Y.unreliable[i]), yMax: 3, clip: { min: -4, max: 8 }, bands: [{ from: null, to: 1.1, tone: 'critical', label: 'Zona de riesgo (bajo 1,1)' }, { from: 1.1, to: 2.6, tone: 'warning', label: 'Zona gris' }, { from: 2.6, to: null, tone: 'good', label: 'Zona segura (sobre 2,6)' }] } };
+      else charts[4] = { lead: lead4.length > 2 ? lead4 : null };
+      // 5 y 6 · hallazgos contables y tributarios: montos involucrados
+      const ctrlIds = /^(st-notes|no-dep|debt-no-int|no-tax|gm-jump|inv-frozen|susp|rel|inverted|payroll-frozen|cutoff|tax-basis|ifrs-)/;
+      const taxIds = /^(vat|ppm-rate|nc-high|personal-exp|fees|hon-ret|f22-rate)/;
+      const ctrl = FIN.audit.filter((x) => ctrlIds.test(x.id));
+      const tax = FIN.audit.filter((x) => taxIds.test(x.id));
+      const hiN = (xs) => xs.filter((x) => x.sev === 'high').length;
+      const top = (xs) => xs.filter((x) => has(x.impact) && x.impact > 0.5).sort((a, b) => b.impact - a.impact)[0];
+      if (ctrl.length) {
+        const t = top(ctrl);
+        charts[5] = Object.assign({ lead: ctrl.length + ' hallazgo' + (ctrl.length > 1 ? 's' : '') + ' contable' + (ctrl.length > 1 ? 's' : '') + ' y de control' + (hiN(ctrl) ? ', ' + hiN(ctrl) + ' de prioridad alta' : '') + (t ? '. El de mayor monto: ' + low1(auditLabel(t)) + ' (' + f$(t.impact) + ').' : '.') }, auditBars(ctrl, 'Hallazgos contables y de control: monto involucrado', 'Color según la prioridad: rojo alta, amarillo media, gris baja. El detalle de cada uno está en la tabla de hallazgos del pilar D.') || {});
+      }
+      if (tax.length) {
+        const t = top(tax);
+        charts[6] = Object.assign({ lead: tax.length + ' hallazgo' + (tax.length > 1 ? 's' : '') + ' tributario' + (tax.length > 1 ? 's' : '') + (hiN(tax) ? ', ' + hiN(tax) + ' de prioridad alta' : '') + (t ? '. El de mayor monto: ' + low1(auditLabel(t)) + ' (' + f$(t.impact) + ').' : '.') }, auditBars(tax, 'Hallazgos tributarios: monto involucrado', 'Color según la prioridad: rojo alta, amarillo media, gris baja.') || {});
+      }
+      // 9 · escenarios: utilidad proyectada por escenario
+      const sc = FIN.scenarios;
+      if (sc) {
+        const yrs = sc.base.res.years.map((y) => y.label);
+        const tones = V.C ? V.C.yearTones(yrs.length) : yrs.map((y, i) => i);
+        charts[9] = { lead: N.projHeadline ? N.projHeadline(FIN) : null, title: 'Utilidad proyectada por escenario', caption: 'Utilidad después de impuestos de cada año proyectado (' + U.listJoin(yrs) + ') en los tres escenarios.', spec: { type: 'columns', categories: ['Pesimista', 'Base', 'Optimista'], series: yrs.map((l, i) => ({ name: l, tone: tones[i], values: ['pes', 'base', 'opt'].map((kk) => sc[kk].res.years[i].ni) })), format: 'money', tableHead: 'Escenario' } };
+      }
+    }
+    // 7 · riesgos principales
+    const rk = (rep.risks || []).filter((r) => r.level !== 'good').slice(0, 4);
+    if (rk.length) charts[7] = { lead: 'Los riesgos principales: ' + U.listJoin(rk.slice(0, 3).map((r) => low1(r.title))) + '.', title: 'Mapa de los riesgos principales', caption: 'Probabilidad e impacto de cada riesgo; el detalle y la mitigación están en la sección de riesgos.', spec: { type: 'matrix', risks: rk } };
+    // 8 · recomendaciones: efecto estimado de cada acción
+    const acts = (rep.actions || []).slice(0, 6);
+    if (acts.length) {
+      const num = acts.filter((a) => has(a.impact) || has(a.cash)).map((a) => ({ a, v: has(a.impact) && a.impact > 0 ? a.impact : a.cash })).filter((x) => has(x.v) && x.v > 0.5);
+      charts[8] = { lead: 'Primera prioridad: ' + low1(acts[0].title) + (acts.length > 1 ? '; luego, ' + U.listJoin(acts.slice(1, 3).map((a) => low1(a.short || a.title))) : '') + '.' };
+      if (num.length >= 2) Object.assign(charts[8], { title: 'Efecto estimado de cada acción', caption: 'Resultado al año o caja que libera cada acción (estimación conservadora). El plazo está a la derecha.', spec: { type: 'bars', orientation: 'h', categories: num.map((x) => shortTitle(x.a.title)), series: [{ name: 'Efecto estimado', role: 'cur', values: num.map((x) => x.v) }], format: 'money', note: num.map((x) => x.a.horizon + ' días') } });
+    }
+    memo.sections.forEach((s) => {
+      const n = +(String(s.h).match(/^(\d+)\./) || [0, 0])[1];
+      const c = charts[n] || {};
+      s.lead = c.lead || N.keySentence(s.p[0]).replace(/^\d+\)\s*/, '');
+      if (c.spec) s.chart = { title: c.title, caption: c.caption, spec: c.spec };
+      // el detalle solo se muestra si agrega algo a la frase principal
+      s.more = s.p.length > 1 || U.norm(s.p[0]) !== U.norm(s.lead);
+    });
+    return memo;
   };
 })(typeof globalThis !== 'undefined' ? (globalThis.V = globalThis.V || {}) : (window.V = window.V || {}));
 
@@ -12617,6 +13137,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     serious: 'var(--st-serious)',
     critical: 'var(--st-critical)',
     seq: ['var(--seq-1)', 'var(--seq-2)', 'var(--seq-3)', 'var(--seq-4)', 'var(--seq-5)', 'var(--seq-6)', 'var(--seq-7)'],
+    // categórica (identidad: partes de un total, medidas distintas) y ordinal por año (antiguo claro → reciente oscuro)
+    cat: ['var(--cat-1)', 'var(--cat-2)', 'var(--cat-3)', 'var(--cat-4)', 'var(--cat-5)', 'var(--cat-6)'],
+    yr: ['var(--yr-1)', 'var(--yr-2)', 'var(--yr-3)', 'var(--yr-4)', 'var(--yr-5)'],
     font: 'inherit',
     dom: true,
   };
@@ -12638,6 +13161,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     critical: '#d03b3b',
     seq: ['#cde2fb', '#9ec5f4', '#6da7ec', '#3987e5', '#256abf', '#184f95', '#0d366b'],
     seqText: ['#121a26', '#121a26', '#121a26', '#ffffff', '#ffffff', '#ffffff', '#ffffff'],
+    cat: ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300'],
+    yr: ['#86b6ef', '#5598e7', '#2a78d6', '#1c5cab', '#104281'],
     font: 'Helvetica, Arial, sans-serif',
     dom: false,
   };
@@ -12649,6 +13174,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     if (f === 'pctS') return U.fmtPct(v, 1, true);
     if (f === 'num') return U.fmtNum(v, 0);
     if (f === 'days') return U.fmtNum(v, 0) + ' d';
+    if (f === 'x') return U.fmtNum(v, 2);
     return String(v);
   };
   /* etiqueta de eje: decimales según el paso entre marcas (0% y 10%, no 0,0%) */
@@ -12657,7 +13183,15 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const k = Math.abs((step || 0.1) * 100);
       return U.fmtPct(t, Math.abs(k - Math.round(k)) < 1e-9 ? 0 : 1);
     }
+    if (f === 'x') {
+      const s = Math.abs(step || 1);
+      return U.fmtNum(t, s >= 1 - 1e-9 ? 0 : s >= 0.1 - 1e-9 ? 1 : 2);
+    }
     return C.fmt(t, f);
+  };
+  /* tonos de la rampa por año para n años (los más recientes, más oscuros; pasos bien separados) */
+  C.yearTones = function (n) {
+    return [[], [4], [1, 4], [0, 2, 4], [0, 1, 3, 4], [0, 1, 2, 3, 4]][Math.max(0, Math.min(5, n))];
   };
   function textW(s, size) {
     return String(s).length * size * 0.56;
@@ -12685,13 +13219,46 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     return [th.cur, th.prev, th.total][i] || th.total;
   }
   C.seriesColor = seriesColor;
+  // color de una serie: categórico (cat), por año (tone) o por rol
+  function colorOf(s, th, i) {
+    if (s && s.cat !== undefined && s.cat !== null) return th.cat[s.cat % th.cat.length];
+    if (s && s.tone !== undefined && s.tone !== null) return th.yr[Math.max(0, Math.min(th.yr.length - 1, s.tone))];
+    return seriesColor(s ? s.role : null, th, i);
+  }
+  C.colorOf = colorOf;
   // líneas punteadas: proyección y escenarios alternativos
   const dashed = (role) => role === 'fc' || role === 'opt' || role === 'pes';
+  /* leyenda que salta de línea cuando no cabe en el ancho del gráfico */
+  function legendBlock(series, th, x0, w, kind) {
+    let out = '';
+    let cx = x0;
+    let row = 0;
+    series.forEach((s, i) => {
+      const col = s.swatch || colorOf(s, th, i);
+      const k = s.swatch ? 'band' : kind;
+      const iw = (k === 'line' ? 22 : 15) + textW(s.name, 12) + 18;
+      if (cx > x0 && cx + iw - 14 > w - 4) {
+        row++;
+        cx = x0;
+      }
+      const y = 16 + row * 20;
+      if (k === 'line') {
+        out += '<line x1="' + cx + '" x2="' + (cx + 16) + '" y1="' + (y - 4) + '" y2="' + (y - 4) + '" stroke="' + col + '" stroke-width="2" stroke-linecap="round"' + (dashed(s.role) ? ' stroke-dasharray="4 3"' : '') + '/>';
+        cx += 22;
+      } else {
+        out += '<rect x="' + cx + '" y="' + (y - 10) + '" width="10" height="10" rx="2" fill="' + col + '"' + (k === 'band' ? ' fill-opacity="0.35"' : '') + '/>';
+        cx += 15;
+      }
+      out += '<text x="' + cx + '" y="' + y + '" font-size="12" fill="' + th.ink2 + '">' + esc(s.name) + '</text>';
+      cx += textW(s.name, 12) + 18;
+    });
+    return { svg: out, h: 24 + row * 20 };
+  }
   function legend(series, th, x, y, kind) {
     let out = '';
     let cx = x;
     series.forEach((s, i) => {
-      const col = seriesColor(s.role, th, i);
+      const col = colorOf(s, th, i);
       if (kind === 'line') {
         out += '<line x1="' + cx + '" x2="' + (cx + 16) + '" y1="' + (y - 4) + '" y2="' + (y - 4) + '" stroke="' + col + '" stroke-width="2" stroke-linecap="round"' + (dashed(s.role) ? ' stroke-dasharray="4 3"' : '') + '/>';
         cx += 22;
@@ -12763,7 +13330,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         const yy = y + k * (barH + 2);
         let col = seriesColor(s.role, th, k);
         if (s.role === 'diverge') col = v >= 0 ? posCol : negCol;
-        if (s.role === 'status') col = th[{ quiebre: 'critical', riesgo: 'serious', 'sin movimiento': 'warning', 'fuera de temporada': 'warning', 'sobre-stock': 'warning', sano: 'good' }[s.status[i]] || 'total'];
+        if (s.role === 'status') col = th[{ quiebre: 'critical', riesgo: 'serious', 'sin movimiento': 'warning', 'fuera de temporada': 'warning', 'sobre-stock': 'warning', sano: 'good', high: 'critical', medium: 'warning', low: 'total' }[s.status[i]] || 'total'];
         g += '<path d="' + hbar(sx(0), sx(v), yy, barH, 4) + '" fill="' + col + '"/>';
         if (k === 0) {
           const lbl = C.fmt(v, lblFmt);
@@ -12782,33 +13349,66 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     return { svg: '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" font-family="' + th.font + '" role="img">' + g + '</svg>', h, hits: { kind: 'rows', items: hits } };
   };
 
-  /* ---------- líneas con proyección ---------- */
+  /* ---------- líneas con proyección (y series por año, zonas de referencia y puntos parciales) ---------- */
   C.line = function (spec, w, th) {
     const series = spec.series;
     const nX = spec.x.length;
-    const legendH = 24;
-    const h = Math.round(Math.max(220, Math.min(320, w * 0.42)));
     const all = [];
     series.forEach((s) => {
       s.values.forEach((v) => v !== null && isFinite(v) && all.push(v));
       (s.hi || []).forEach((v) => v !== null && isFinite(v) && all.push(v));
       (s.lo || []).forEach((v) => v !== null && isFinite(v) && all.push(v));
     });
-    const min0 = Math.min(...all);
-    const max0 = Math.max(...all);
-    const ticks = U.niceTicks(spec.format === 'pct' ? Math.max(0, min0 - (max0 - min0) * 0.3) : Math.min(0, min0), max0, 5);
+    (spec.refLines || []).forEach((r) => all.push(r.value));
+    if (spec.yMin !== undefined && spec.yMin !== null) all.push(spec.yMin);
+    if (spec.yMax !== undefined && spec.yMax !== null) all.push(spec.yMax);
+    if (!all.length) return { svg: '', h: 0 };
+    // recorte de escala: un valor extremo (un año de arranque, un patrimonio casi cero) no aplasta a los demás;
+    // se dibuja en el borde con una flecha y su valor real
+    const clip = spec.clip || {};
+    let min0 = Math.min(...all);
+    let max0 = Math.max(...all);
+    if (clip.max !== undefined && max0 > clip.max) max0 = clip.max;
+    if (clip.min !== undefined && min0 < clip.min) min0 = clip.min;
+    // porcentajes: el eje parte cerca del mínimo, salvo que haya valores negativos (márgenes con pérdida)
+    const lo0 = spec.format === 'pct' ? (min0 < 0 ? min0 : Math.max(0, min0 - (max0 - min0) * 0.3)) : Math.min(0, min0);
+    const ticks = U.niceTicks(lo0, max0 === lo0 ? lo0 + 1 : max0, 5);
     const yLabW = Math.max(...ticks.ticks.map((t) => textW(C.fmtTick(t, spec.format, ticks.step), 11))) + 10;
     const x0 = yLabW + 4;
     const x1 = w - 12;
+    // una sola serie no necesita leyenda: el título dice qué se grafica
+    const bandItems = (spec.bands || []).map((b) => ({ name: b.label, swatch: th[b.tone] || th.grid }));
+    const lgItems = (series.length > 1 || spec.legend ? series : []).concat(bandItems);
+    const lg = lgItems.length ? legendBlock(lgItems, th, x0, w, 'line') : { svg: '', h: 8 };
+    const legendH = lg.h;
+    const h = (spec.h || Math.round(Math.max(220, Math.min(320, w * 0.42)))) + (legendH - 24);
     const y0 = legendH + 10;
     const y1 = h - 26;
-    const sx = (i) => x0 + (nX <= 1 ? 0 : (i / (nX - 1)) * (x1 - x0));
-    const sy = (v) => y1 - ((v - ticks.min) / (ticks.max - ticks.min || 1)) * (y1 - y0);
-    let g = legend(series, th, x0, 16, 'line');
+    // con pocas categorías (años) los puntos no tocan los bordes
+    const pad = spec.dots && nX <= 8 ? Math.min(28, (x1 - x0) / (nX * 2)) : 0;
+    const sx = (i) => x0 + pad + (nX <= 1 ? (x1 - x0 - 2 * pad) / 2 : (i / (nX - 1)) * (x1 - x0 - 2 * pad));
+    const syRaw = (v) => y1 - ((v - ticks.min) / (ticks.max - ticks.min || 1)) * (y1 - y0);
+    const out = (v) => (v > ticks.max + 1e-9 ? 1 : v < ticks.min - 1e-9 ? -1 : 0);
+    const sy = (v) => syRaw(Math.max(ticks.min, Math.min(ticks.max, v)));
+    let g = lg.svg;
+    // zonas de referencia (p. ej. las del Z″ de Altman): franjas suaves con su nombre
+    (spec.bands || []).forEach((b) => {
+      const a = Math.max(ticks.min, b.from === null || b.from === undefined ? ticks.min : b.from);
+      const z = Math.min(ticks.max, b.to === null || b.to === undefined ? ticks.max : b.to);
+      if (z <= a) return;
+      const ya = sy(z);
+      const yb = sy(a);
+      g += '<rect x="' + x0 + '" y="' + ya + '" width="' + (x1 - x0) + '" height="' + (yb - ya) + '" fill="' + (th[b.tone] || th.grid) + '" opacity="0.09"/>';
+    });
     ticks.ticks.forEach((t) => {
       const y = sy(t);
-      g += '<line x1="' + x0 + '" x2="' + x1 + '" y1="' + y + '" y2="' + y + '" stroke="' + (t === ticks.min ? th.axis : th.grid) + '" stroke-width="1"/>';
+      g += '<line x1="' + x0 + '" x2="' + x1 + '" y1="' + y + '" y2="' + y + '" stroke="' + (t === ticks.min || (t === 0 && ticks.min < 0) ? th.axis : th.grid) + '" stroke-width="1"/>';
       g += '<text x="' + (x0 - 6) + '" y="' + (y + 4) + '" font-size="11" fill="' + th.muted + '" text-anchor="end">' + esc(C.fmtTick(t, spec.format, ticks.step)) + '</text>';
+    });
+    (spec.refLines || []).forEach((r) => {
+      const y = sy(r.value);
+      g += '<line x1="' + x0 + '" x2="' + x1 + '" y1="' + y + '" y2="' + y + '" stroke="' + th.ink2 + '" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"/>';
+      if (r.label) g += '<text x="' + (x1 - 2) + '" y="' + (y - 5) + '" font-size="10.5" fill="' + th.ink2 + '" text-anchor="end">' + esc(r.label) + '</text>';
     });
     const step = Math.max(1, Math.ceil(nX / Math.max(2, Math.floor((x1 - x0) / 44))));
     spec.xLabels.forEach((l, i) => {
@@ -12835,36 +13435,51 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (idx.length < 2) return;
       idx.forEach((i, j) => (up += (j ? 'L' : 'M') + sx(i) + ',' + sy(s.hi[i])));
       idx.slice().reverse().forEach((i) => (dn += 'L' + sx(i) + ',' + sy(s.lo[i])));
-      g += '<path d="' + up + dn + 'Z" fill="' + seriesColor(s.role, th, k) + '" opacity="0.1"/>';
+      g += '<path d="' + up + dn + 'Z" fill="' + colorOf(s, th, k) + '" opacity="0.1"/>';
     });
-    // series (anterior primero, actual encima)
+    // series (anterior primero, actual encima; por año, de la más antigua a la más reciente)
     const order = series.map((s, k) => k).sort((a, b) => (series[a].role === 'prev' ? -1 : 0) - (series[b].role === 'prev' ? -1 : 0));
+    const partial = spec.partial || [];
     order.forEach((k) => {
       const s = series[k];
-      const col = seriesColor(s.role, th, k);
+      const col = colorOf(s, th, k);
       let d = '';
       let pen = false;
       s.values.forEach((v, i) => {
-        if (v === null || !isFinite(v)) {
+        if (v === null || v === undefined || !isFinite(v)) {
           pen = false;
           return;
         }
         d += (pen ? 'L' : 'M') + sx(i).toFixed(1) + ',' + sy(v).toFixed(1);
         pen = true;
       });
-      g += '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"' + (dashed(s.role) ? ' stroke-dasharray="5 4"' : '') + '/>';
+      if (d) g += '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"' + (dashed(s.role) ? ' stroke-dasharray="5 4"' : '') + '/>';
+      // valores fuera de escala: flecha en el borde y el valor real al lado
+      s.values.forEach((v, i) => {
+        if (v === null || v === undefined || !isFinite(v) || !out(v)) return;
+        const yy = sy(v);
+        const up = out(v) > 0;
+        g += '<path d="M' + (sx(i) - 5) + ',' + (yy + (up ? 4 : -4)) + 'L' + sx(i) + ',' + (yy + (up ? -4 : 4)) + 'L' + (sx(i) + 5) + ',' + (yy + (up ? 4 : -4)) + 'Z" fill="' + col + '" stroke="' + th.surface + '" stroke-width="1.5"/>';
+        const lbl = C.fmt(v, spec.format);
+        const tx = Math.min(sx(i) + 9, x1 - textW(lbl, 10.5));
+        g += '<text x="' + tx + '" y="' + (yy + (up ? 12 : -6)) + '" font-size="10.5" fill="' + th.ink2 + '">' + esc(lbl) + '</text>';
+      });
+      // puntos en cada valor (pocas categorías): el período parcial o no comparable va hueco
+      if (spec.dots)
+        s.values.forEach((v, i) => {
+          if (v === null || v === undefined || !isFinite(v) || out(v)) return;
+          g += partial[i] ? '<circle cx="' + sx(i) + '" cy="' + sy(v) + '" r="4" fill="' + th.surface + '" stroke="' + col + '" stroke-width="2"/>' : '<circle cx="' + sx(i) + '" cy="' + sy(v) + '" r="4.5" fill="' + col + '" stroke="' + th.surface + '" stroke-width="2"/>';
+        });
       // punto final con anillo de superficie
       let last = -1;
       s.values.forEach((v, i) => {
-        if (v !== null && isFinite(v)) last = i;
+        if (v !== null && v !== undefined && isFinite(v)) last = i;
       });
-      if (last >= 0 && s.role !== 'prev') {
-        g += '<circle cx="' + sx(last) + '" cy="' + sy(s.values[last]) + '" r="4.5" fill="' + col + '" stroke="' + th.surface + '" stroke-width="2"/>';
-        if (s.role === 'cur' || s.role === 'fc' || s.role === 'base') {
-          const lbl = C.fmt(s.values[last], spec.format);
-          const tx = Math.min(sx(last) + 8, x1 - textW(lbl, 11));
-          g += '<text x="' + tx + '" y="' + (sy(s.values[last]) - 9) + '" font-size="11" fill="' + th.ink2 + '">' + esc(lbl) + '</text>';
-        }
+      if (last >= 0 && s.role !== 'prev' && !spec.dots && !out(s.values[last])) g += '<circle cx="' + sx(last) + '" cy="' + sy(s.values[last]) + '" r="4.5" fill="' + col + '" stroke="' + th.surface + '" stroke-width="2"/>';
+      if (last >= 0 && !out(s.values[last]) && (s.role === 'cur' || s.role === 'fc' || s.role === 'base' || s.endLabel)) {
+        const lbl = C.fmt(s.values[last], spec.format);
+        const tx = Math.min(sx(last) + 8, x1 - textW(lbl, 11));
+        g += '<text x="' + tx + '" y="' + (sy(s.values[last]) - 9) + '" font-size="11" fill="' + th.ink2 + '">' + esc(lbl) + '</text>';
       }
     });
     return { svg: '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" font-family="' + th.font + '" role="img">' + g + '</svg>', h, hits: { kind: 'x', sx, n: nX, y0, y1 } };
@@ -12874,7 +13489,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   C.waterfall = function (spec, w, th) {
     const steps = spec.steps;
     const n = steps.length;
-    const h = spec.h || 260; // alto opcional (láminas)
+    // en pantallas angostas los nombres de los pasos van inclinados (más espacio abajo)
+    const bandW0 = (w - 70) / Math.max(1, n);
+    const tilt = bandW0 < 46;
+    const h = (spec.h || 260) + (tilt ? 26 : 0); // alto opcional (láminas)
     let run = 0;
     const bars = steps.map((s) => {
       if (s.kind === 'total') {
@@ -12892,12 +13510,12 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const range = Math.max(max - min, Math.abs(max) * 0.02);
     // si el acumulado pasa bajo cero (p. ej. el inventario consume más caja de la que había) el eje lo muestra completo
     const lo = min < 0 ? min - range * 0.06 : Math.max(0, min - range * 0.9);
-    const ticks = U.niceTicks(lo, Math.max(0, max) + range * 0.08, 4);
+    const ticks = U.niceTicks(lo, Math.max(0, max) + range * 0.08, 5);
     const base = ticks.min > 0 ? ticks.min : 0;
     const x0 = Math.max(...ticks.ticks.map((t) => textW(C.fmt(t, spec.format), 11))) + 14;
     const x1 = w - 8;
     const y0 = 16;
-    const y1 = h - 40;
+    const y1 = h - (tilt ? 66 : 40);
     const sy = (v) => y1 - ((v - ticks.min) / (ticks.max - ticks.min || 1)) * (y1 - y0);
     const bw = Math.min(46, ((x1 - x0) / n) * 0.62);
     const bandW = (x1 - x0) / n;
@@ -12916,11 +13534,141 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       g += b.s.kind === 'total' ? '<path d="' + vbar(cx, ya, yb, bw, 4) + '" fill="' + col + '"/>' : '<rect x="' + cx + '" y="' + Math.min(ya, yb) + '" width="' + bw + '" height="' + Math.max(1, Math.abs(yb - ya)) + '" rx="3" fill="' + col + '"/>';
       if (i < n - 1) g += '<line x1="' + (cx + bw) + '" x2="' + (cx + bandW) + '" y1="' + yb + '" y2="' + yb + '" stroke="' + th.axis + '" stroke-width="1"/>';
       const lbl = b.s.kind === 'total' ? C.fmt(b.s.value, spec.format) : (b.s.value >= 0 ? '+' : '') + C.fmt(b.s.value, spec.format);
-      g += '<text x="' + (cx + bw / 2) + '" y="' + (Math.min(ya, yb) - 5) + '" font-size="11" fill="' + th.ink2 + '" text-anchor="middle">' + esc(lbl) + '</text>';
-      g += '<text x="' + (cx + bw / 2) + '" y="' + (h - 22) + '" font-size="11" fill="' + th.ink + '" text-anchor="middle">' + esc(U.truncate(b.s.label, Math.max(6, Math.floor(bandW / 6.5)))) + '</text>';
+      // el valor solo si cabe en su franja (si no, queda en la ayuda y en la tabla)
+      if (textW(lbl, 11) <= bandW + 4 || (b.s.kind === 'total' && textW(lbl, 10) <= bandW * 1.6 && bandW >= 30)) g += '<text x="' + (cx + bw / 2) + '" y="' + (Math.min(ya, yb) - 5) + '" font-size="' + (textW(lbl, 11) <= bandW + 4 ? 11 : 10) + '" fill="' + th.ink2 + '" text-anchor="middle">' + esc(lbl) + '</text>';
+      if (tilt) {
+        const tx = cx + bw / 2;
+        const ty = y1 + 14;
+        g += '<text x="' + tx + '" y="' + ty + '" font-size="10.5" fill="' + th.ink + '" text-anchor="end" transform="rotate(-40 ' + tx + ' ' + ty + ')">' + esc(U.truncate(b.s.label, 13)) + '</text>';
+      } else g += '<text x="' + (cx + bw / 2) + '" y="' + (h - 22) + '" font-size="11" fill="' + th.ink + '" text-anchor="middle">' + esc(U.truncate(b.s.label, Math.max(6, Math.floor(bandW / 6.5)))) + '</text>';
       hits.push({ x: x0 + bandW * i, w: bandW, i });
     });
     return { svg: '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" font-family="' + th.font + '" role="img">' + g + '</svg>', h, hits: { kind: 'cols', items: hits } };
+  };
+
+  /* ---------- columnas por período: una serie, agrupadas o apiladas (composición) ---------- */
+  // spec: { categories, series: [{ name, values, cat?, tone?, role? }], format, stacked?, signColor?, emph?, partial?, note?, refLines?, labels? }
+  C.columns = function (spec, w, th) {
+    const cats = spec.categories;
+    const n = cats.length;
+    const series = spec.series;
+    const stacked = !!spec.stacked;
+    const grouped = !stacked && series.length > 1;
+    const ok = (v) => v !== null && v !== undefined && isFinite(v);
+    if (!n || !series.length) return { svg: '', h: 0 };
+    w = Math.min(w, Math.max(340, 110 + n * (series.length > 1 && !stacked ? 60 * series.length + 60 : 150)));
+    const lg = series.length > 1 ? legendBlock(series, th, 0, w, 'bar') : { svg: '', h: 0 };
+    const hasNote = !!(spec.note && spec.note.some(Boolean));
+    const h = (spec.h || Math.round(Math.max(230, Math.min(300, w * 0.42)))) + (lg.h > 24 ? lg.h - 24 : 0) + (hasNote ? 14 : 0);
+    const top = (lg.h ? lg.h + 4 : 0) + 18;
+    const bottom = 24 + (hasNote ? 15 : 0);
+    // rango: con apiladas, la suma de lo positivo y de lo negativo de cada período
+    let lo = 0;
+    let hi = 0;
+    const totals = cats.map((c, i) => {
+      let pos = 0;
+      let neg = 0;
+      series.forEach((s) => {
+        const v = s.values[i];
+        if (!ok(v)) return;
+        if (stacked) {
+          if (v >= 0) pos += v;
+          else neg += v;
+        } else {
+          pos = Math.max(pos, v);
+          neg = Math.min(neg, v);
+        }
+      });
+      hi = Math.max(hi, pos);
+      lo = Math.min(lo, neg);
+      return stacked ? pos + neg : null;
+    });
+    (spec.refLines || []).forEach((r) => {
+      hi = Math.max(hi, r.value);
+      lo = Math.min(lo, r.value);
+    });
+    if (hi === lo) hi = lo + 1;
+    const ticks = U.niceTicks(lo, hi, 5);
+    const yLabW = Math.max(...ticks.ticks.map((t) => textW(C.fmtTick(t, spec.format, ticks.step), 11))) + 10;
+    const x0 = yLabW + 4;
+    const x1 = w - 8;
+    const y0 = top;
+    const y1 = h - bottom;
+    const sy = (v) => y1 - ((v - ticks.min) / (ticks.max - ticks.min || 1)) * (y1 - y0);
+    const band = (x1 - x0) / n;
+    const per = grouped ? series.length : 1;
+    const bw = Math.max(5, Math.min(grouped ? 16 : 24, (band * 0.64 - (per - 1) * 2) / per));
+    const gw = per * bw + (per - 1) * 2;
+    const partial = spec.partial || [];
+    let g = lg.svg;
+    ticks.ticks.forEach((t) => {
+      const y = sy(t);
+      g += '<line x1="' + x0 + '" x2="' + x1 + '" y1="' + y + '" y2="' + y + '" stroke="' + (t === 0 ? th.axis : th.grid) + '" stroke-width="1"/>';
+      g += '<text x="' + (x0 - 6) + '" y="' + (y + 4) + '" font-size="11" fill="' + th.muted + '" text-anchor="end">' + esc(C.fmtTick(t, spec.format, ticks.step)) + '</text>';
+    });
+    const hits = [];
+    const lblFmt = spec.format === 'pct' && spec.signColor ? 'pct' : spec.format;
+    cats.forEach((c, i) => {
+      const bx = x0 + band * i + (band - gw) / 2;
+      const op = partial[i] ? ' fill-opacity="0.5"' : '';
+      if (stacked) {
+        // segmentos de abajo hacia arriba (positivos) y hacia abajo (negativos), separados por 2 px de superficie
+        let pos = 0;
+        let neg = 0;
+        const segs = [];
+        series.forEach((s, k) => {
+          const v = s.values[i];
+          if (!ok(v) || Math.abs(v) < 1e-9) return;
+          const a = v >= 0 ? pos : neg;
+          const b = a + v;
+          if (v >= 0) pos = b;
+          else neg = b;
+          segs.push({ k, a, b, v, col: colorOf(s, th, k) });
+        });
+        const topPos = segs.filter((sg) => sg.v > 0).slice(-1)[0];
+        const botNeg = segs.filter((sg) => sg.v < 0).slice(-1)[0];
+        segs.forEach((sg) => {
+          const ya = sy(sg.a);
+          const yb = sy(sg.b);
+          if (sg === topPos || sg === botNeg) g += '<path d="' + vbar(bx, ya, yb, bw, 4) + '" fill="' + sg.col + '"' + op + '/>';
+          else g += '<rect x="' + bx + '" y="' + Math.min(ya, yb) + '" width="' + bw + '" height="' + Math.max(0.5, Math.abs(yb - ya)) + '" fill="' + sg.col + '"' + op + '/>';
+        });
+        // separadores (gap de superficie) entre segmentos que se tocan
+        segs.forEach((sg) => {
+          if (sg.a === 0) return;
+          g += '<rect x="' + (bx - 0.5) + '" y="' + (sy(sg.a) - 1) + '" width="' + (bw + 1) + '" height="2" fill="' + th.surface + '"/>';
+        });
+        if (spec.labels !== 'none' && ok(totals[i])) {
+          const lbl = C.fmt(totals[i], spec.format);
+          if (textW(lbl, 11) <= band - 2) g += '<text x="' + (bx + bw / 2) + '" y="' + (sy(Math.max(0, pos)) - 6) + '" font-size="11" fill="' + th.ink2 + '" text-anchor="middle">' + esc(lbl) + '</text>';
+        }
+      } else {
+        series.forEach((s, k) => {
+          const v = s.values[i];
+          if (!ok(v)) return;
+          const x = bx + k * (bw + 2);
+          let col = colorOf(s, th, k);
+          if (spec.signColor) col = v >= 0 ? th.pos : th.neg;
+          if (spec.emph !== undefined && spec.emph !== null && !grouped) col = i === spec.emph ? th.cur : th.prev;
+          g += '<path d="' + vbar(x, sy(0), sy(v), bw, 4) + '" fill="' + col + '"' + op + '/>';
+          // etiqueta de valor en el extremo: todas con una serie; con varias, solo si se pide (última categoría)
+          if (!grouped ? spec.labels !== 'none' : spec.labels === 'last' && i === n - 1) {
+            const lbl = C.fmt(v, lblFmt);
+            if (textW(lbl, 11) <= (grouped ? band / per + 8 : band - 2)) g += '<text x="' + (x + bw / 2) + '" y="' + (v >= 0 ? sy(v) - 6 : sy(v) + 14) + '" font-size="11" fill="' + th.ink2 + '" text-anchor="middle">' + esc(lbl) + '</text>';
+          }
+        });
+      }
+      const maxCh = Math.max(4, Math.floor(band / 6.2));
+      g += '<text x="' + (x0 + band * i + band / 2) + '" y="' + (h - bottom + 16) + '" font-size="11" fill="' + th.ink + '" text-anchor="middle">' + esc(U.truncate(String(c), maxCh)) + '</text>';
+      if (hasNote && spec.note[i]) g += '<text x="' + (x0 + band * i + band / 2) + '" y="' + (h - bottom + 31) + '" font-size="10.5" fill="' + th.muted + '" text-anchor="middle">' + esc(U.truncate(String(spec.note[i]), maxCh)) + '</text>';
+      hits.push({ x: x0 + band * i, w: band, i });
+    });
+    (spec.refLines || []).forEach((r) => {
+      const y = sy(r.value);
+      g += '<line x1="' + x0 + '" x2="' + x1 + '" y1="' + y + '" y2="' + y + '" stroke="' + th.ink2 + '" stroke-width="1" stroke-dasharray="4 3" opacity="0.7"/>';
+      if (r.label) g += '<text x="' + (x1 - 2) + '" y="' + (y - 5) + '" font-size="10.5" fill="' + th.ink2 + '" text-anchor="end">' + esc(r.label) + '</text>';
+    });
+    return { svg: '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" font-family="' + th.font + '" role="img">' + g + '</svg>', h, w, hits: { kind: 'colsx', items: hits }, totals };
   };
 
   /* ---------- mapa de calor año × mes ---------- */
@@ -13035,6 +13783,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     th = th || C.THEME_DOM;
     if (spec.type === 'bars') return C.bars(spec, w, th);
     if (spec.type === 'line') return C.line(spec, w, th);
+    if (spec.type === 'columns') return C.columns(spec, w, th);
     if (spec.type === 'waterfall') return C.waterfall(spec, w, th);
     if (spec.type === 'heatmap') return C.heatmap(spec, w, th);
     if (spec.type === 'matrix') return C.matrix(spec.risks, w, th);
@@ -13045,7 +13794,14 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   C.tableOf = function (spec) {
     if (spec.type === 'bars') return { head: ['Categoría'].concat(spec.series.map((s) => s.name)).concat(spec.note ? ['Variación'] : []), rows: spec.categories.map((c, i) => [c].concat(spec.series.map((s) => C.fmt(s.values[i], spec.format === 'pct' && spec.diverging ? 'pctS' : spec.format, false))).concat(spec.note ? [spec.note[i] || ''] : [])) };
     if (spec.type === 'line') return { head: [spec.tableHead || 'Mes'].concat(spec.series.map((s) => s.name)), rows: spec.x.map((x, i) => [spec.tableX ? spec.tableX[i] : U.periodLabel(x)].concat(spec.series.map((s) => (s.values[i] === null || s.values[i] === undefined ? '' : C.fmt(s.values[i], spec.format, false))))) };
-    if (spec.type === 'waterfall') return { head: ['Paso', 'Monto'], rows: spec.steps.map((s) => [s.label, (s.kind === 'delta' && s.value > 0 ? '+' : '') + C.fmt(s.value, spec.format, false)]) };
+    if (spec.type === 'columns') {
+      const tot = spec.stacked;
+      return {
+        head: [spec.tableHead || 'Período'].concat(spec.series.map((s) => s.name)).concat(tot ? ['Total'] : []).concat(spec.note && spec.note.some(Boolean) ? [spec.noteHead || 'Variación'] : []),
+        rows: spec.categories.map((c, i) => [String(c) + (spec.partial && spec.partial[i] ? ' (parcial)' : '')].concat(spec.series.map((s) => (s.values[i] === null || s.values[i] === undefined ? '' : C.fmt(s.values[i], spec.format, false)))).concat(tot ? [C.fmt(U.sum(spec.series, (s) => (isFinite(s.values[i]) && s.values[i] !== null ? s.values[i] : 0)), spec.format, false)] : []).concat(spec.note && spec.note.some(Boolean) ? [spec.note[i] || ''] : [])),
+      };
+    }
+    if (spec.type === 'waterfall') return { head: ['Paso', 'Monto'], rows: spec.steps.map((s) => [s.full || s.label, (s.kind === 'delta' && s.value > 0 ? '+' : '') + C.fmt(s.value, spec.format, false)]) };
     if (spec.type === 'heatmap') return { head: ['Año'].concat(spec.cols), rows: spec.rows.map((r, i) => [r].concat(spec.values[i].map((v) => (v === null ? '' : C.fmt(v, spec.format))))).concat(spec.index ? [['Índice'].concat(spec.index.map((v) => (v === null ? '' : U.fmtNum(v, 2))))] : []) };
     return { head: [], rows: [] };
   };
@@ -13101,12 +13857,13 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           }
         }
         let html = '<div class="tip-h">' + esc(spec.tableX ? spec.tableX[best] : U.periodLabel(spec.x[best])) + '</div>';
+        if (spec.partial && spec.partial[best]) html += '<div class="tip-sub">' + esc(spec.partialNote || 'Período parcial: no se compara directo con años completos.') + '</div>';
         let any = false;
         spec.series.forEach((s, k) => {
           const v = s.values[best];
           if (v === null || v === undefined || !isFinite(v)) return;
           any = true;
-          html += row(seriesColor(s.role, C.THEME_DOM, k), s.name, C.fmt(v, spec.format, false), dashed(s.role));
+          html += row(colorOf(s, C.THEME_DOM, k), s.name, C.fmt(v, spec.format, false), dashed(s.role));
           if (s.lo && s.lo[best] !== null && s.lo[best] !== undefined) html += '<div class="tip-sub">Rango 80%: ' + esc(C.fmt(s.lo[best], spec.format)) + ' – ' + esc(C.fmt(s.hi[best], spec.format)) + '</div>';
         });
         let cross = plot.querySelector('.viz-cross');
@@ -13129,7 +13886,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       }
       let hit = null;
       if (hh.kind === 'rows') hit = hh.items.find((it) => y >= it.y && y < it.y + it.h);
-      else if (hh.kind === 'cols') hit = hh.items.find((it) => x >= it.x && x < it.x + it.w);
+      else if (hh.kind === 'cols' || hh.kind === 'colsx') hit = hh.items.find((it) => x >= it.x && x < it.x + it.w);
       else if (hh.kind === 'cells' || hh.kind === 'points') hit = hh.items.find((it) => x >= it.x && x < it.x + it.w && y >= it.y && y < it.y + it.h);
       if (!hit) {
         tip.hidden = true;
@@ -13141,12 +13898,27 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         spec.series.forEach((s, k) => {
           const v = s.values[hit.i];
           if (v === null || v === undefined) return;
-          html += row(s.role === 'diverge' ? ((v >= 0) !== !!spec.invert ? 'var(--viz-pos)' : 'var(--viz-neg)') : seriesColor(s.role, C.THEME_DOM, k), s.name, C.fmt(v, spec.format === 'pct' && spec.diverging ? 'pctS' : spec.format, false));
+          html += row(s.role === 'diverge' ? ((v >= 0) !== !!spec.invert ? 'var(--viz-pos)' : 'var(--viz-neg)') : colorOf(s, C.THEME_DOM, k), s.name, C.fmt(v, spec.format === 'pct' && spec.diverging ? 'pctS' : spec.format, false));
         });
         if (spec.note && spec.note[hit.i]) html += '<div class="tip-sub">' + esc(spec.note[hit.i]) + '</div>';
       } else if (hh.kind === 'cols') {
         const st = spec.steps[hit.i];
-        html = '<div class="tip-h">' + esc(st.label) + '</div>' + row(st.kind === 'total' ? 'var(--viz-total)' : st.value >= 0 ? 'var(--viz-pos)' : 'var(--viz-neg)', st.kind === 'total' ? 'Total' : 'Efecto', (st.kind === 'delta' && st.value > 0 ? '+' : '') + C.fmt(st.value, spec.format, false));
+        html = '<div class="tip-h">' + esc(st.full || st.label) + '</div>' + row(st.kind === 'total' ? 'var(--viz-total)' : st.value >= 0 ? 'var(--viz-pos)' : 'var(--viz-neg)', st.kind === 'total' ? 'Total' : 'Efecto', (st.kind === 'delta' && st.value > 0 ? '+' : '') + C.fmt(st.value, spec.format, false));
+      } else if (hh.kind === 'colsx') {
+        const i = hit.i;
+        html = '<div class="tip-h">' + esc(String(spec.categories[i])) + '</div>';
+        if (spec.partial && spec.partial[i]) html += '<div class="tip-sub">' + esc(spec.partialNote || 'Período parcial: no se compara directo con años completos.') + '</div>';
+        const tot = res.totals ? res.totals[i] : null;
+        spec.series.forEach((s, k) => {
+          const v = s.values[i];
+          if (v === null || v === undefined || !isFinite(v)) return;
+          let col = colorOf(s, C.THEME_DOM, k);
+          if (spec.signColor) col = v >= 0 ? 'var(--viz-pos)' : 'var(--viz-neg)';
+          if (spec.emph !== undefined && spec.emph !== null && spec.series.length === 1) col = i === spec.emph ? 'var(--viz-cur)' : 'var(--viz-prev)';
+          html += row(col, s.name, C.fmt(v, spec.format, false) + (spec.stacked && tot ? ' · ' + U.fmtPct(v / tot, 0) : ''));
+        });
+        if (spec.stacked && tot !== null && tot !== undefined) html += '<div class="tip-sub">Total: ' + esc(C.fmt(tot, spec.format, false)) + '</div>';
+        if (spec.note && spec.note[i]) html += '<div class="tip-sub">' + esc(spec.note[i]) + '</div>';
       } else if (hh.kind === 'cells') {
         html = '<div class="tip-h">' + esc(spec.cols[hit.j] + ' ' + spec.rows[hit.i]) + '</div>' + row('var(--seq-5)', 'Ventas', C.fmt(hit.v, spec.format, false)) + (spec.index && spec.index[hit.j] !== null ? '<div class="tip-sub">Índice estacional del mes: ' + U.fmtNum(spec.index[hit.j], 2) + '</div>' : '');
       } else if (hh.kind === 'points') {
@@ -13402,23 +14174,42 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     return h + '</tbody></table></div>';
   };
 
-  /* informe del consultor (texto) */
-  RU.memo = function (rep) {
+  /* figura con gráfico interactivo, botón de tabla equivalente y nota */
+  RU.chartFig = function (id, spec, title, caption, ref, reg) {
+    reg[id] = spec;
+    const tv = C.tableOf(spec);
+    const tbl = tv.head.length && tv.rows.length;
+    return '<figure class="exhibit" style="margin:0"><div class="ex-head"><h4>' + (ref ? '<span class="ref">' + esc(ref) + '</span>' : '') + esc(title || '') + '</h4>' + (tbl ? '<button class="btn ghost sm" data-toggle-table="' + id + '" aria-expanded="false">Ver tabla</button>' : '') + '</div>' + (caption ? '<p class="ex-cap">' + esc(caption) + '</p>' : '') + '<div class="viz" id="' + id + '" role="figure" aria-label="' + esc(title || '') + '"' + (spec.type === 'matrix' ? ' style="max-width:470px"' : '') + '></div>' + (tbl ? '<div id="' + id + '-tbl" hidden>' + RU.table(tv.head.map((hh, i) => ({ k: i, l: hh })), tv.rows.map((r) => Object.assign({}, r)), { max: 60 }) + '</div>' : '') + '</figure>';
+  };
+
+  /* informe del consultor: una frase y un gráfico por sección; el texto completo, plegado */
+  RU.memoText = function (sct, m) {
+    let h = '';
+    if (sct.p.every((x) => /^\d+\)\s/.test(x))) {
+      h += '<ol class="memo-ol">' + sct.p.map((x) => {
+        const t = x.replace(/^\d+\)\s/, '');
+        const i = t.indexOf('. ');
+        return '<li>' + (i > 0 ? '<b>' + esc(t.slice(0, i + 1)) + '</b> ' + esc(t.slice(i + 2)) : esc(t)) + '</li>';
+      }).join('') + '</ol>';
+    } else h += sct.p.map((x) => '<p>' + esc(x) + '</p>').join('');
+    if (/^5\./.test(sct.h) && m.adjusted) {
+      const a = m.adjusted;
+      h += '<div class="tbl-wrap" style="max-width:560px"><table class="t fs"><tbody><tr class="fs-t1"><td>Resultado informado ' + esc(a.period) + '</td><td class="n">' + f$(a.ni) + '</td></tr>' + a.adj.map((x) => '<tr><td>' + esc(x.l) + '</td><td class="n">' + f$(x.v) + '</td></tr>').join('') + '<tr class="fs-t2"><td>Resultado ajustado estimado</td><td class="n">' + f$(a.niAdj) + '</td></tr></tbody></table></div>';
+    }
+    return h;
+  };
+  RU.memo = function (rep, reg) {
     const m = rep.memo;
     if (!m) return '';
-    let h = '<section class="sec memo" id="r-memo"><div class="sec-head"><div class="row1"><span class="sec-letter">✎</span><h2>' + esc(m.title) + '</h2></div><span class="q">' + esc(m.subtitle) + '. Redactado por el motor de reglas a partir de las cifras, sin IA.</span></div>';
-    m.sections.forEach((sct) => {
+    reg = reg || {};
+    let h = '<section class="sec memo" id="r-memo"><div class="sec-head"><div class="row1"><span class="sec-letter">✎</span><h2>' + esc(m.title) + '</h2></div><span class="q">' + esc(m.subtitle) + '. Redactado por el motor de reglas a partir de las cifras, sin IA. Cada sección resume su idea en una frase y un gráfico; el texto completo está en «Ver detalle».</span></div>';
+    m.sections.forEach((sct, si) => {
       h += '<div class="memo-sec"><h3>' + esc(sct.h) + '</h3>';
-      if (sct.p.every((x) => /^\d+\)\s/.test(x))) {
-        h += '<ol class="memo-ol">' + sct.p.map((x) => {
-          const t = x.replace(/^\d+\)\s/, '');
-          const i = t.indexOf('. ');
-          return '<li>' + (i > 0 ? '<b>' + esc(t.slice(0, i + 1)) + '</b> ' + esc(t.slice(i + 2)) : esc(t)) + '</li>';
-        }).join('') + '</ol>';
-      } else h += sct.p.map((x) => '<p>' + esc(x) + '</p>').join('');
-      if (/^5\./.test(sct.h) && m.adjusted) {
-        const a = m.adjusted;
-        h += '<div class="tbl-wrap" style="max-width:560px"><table class="t fs"><tbody><tr class="fs-t1"><td>Resultado informado ' + esc(a.period) + '</td><td class="n">' + f$(a.ni) + '</td></tr>' + a.adj.map((x) => '<tr><td>' + esc(x.l) + '</td><td class="n">' + f$(x.v) + '</td></tr>').join('') + '<tr class="fs-t2"><td>Resultado ajustado estimado</td><td class="n">' + f$(a.niAdj) + '</td></tr></tbody></table></div>';
+      if (sct.lead === undefined) h += RU.memoText(sct, m);
+      else {
+        h += '<p class="memo-lead">' + esc(sct.lead) + '</p>';
+        if (sct.chart && sct.chart.spec) h += RU.chartFig('memo-c-' + si, sct.chart.spec, sct.chart.title, sct.chart.caption, null, reg);
+        if (sct.more !== false || (/^5\./.test(sct.h) && m.adjusted)) h += '<details class="more"><summary>Ver detalle</summary><div class="more-body">' + RU.memoText(sct, m) + '</div></details>';
       }
       h += '</div>';
     });
@@ -13474,7 +14265,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     reg['ex-proj-rev'] = { type: 'line', x, xLabels: x, tableX: x, tableHead: 'Año', series: mk((f) => f.rev, (y) => y.rev), format: 'money' };
     reg['ex-proj-cash'] = { type: 'line', x, xLabels: x, tableX: x, tableHead: 'Año', series: mk((f) => f.cash - f.stdebt - f.ltdebt, (y) => y.cash - y.revolver - y.debt), format: 'money' };
     reg['ex-proj-ni'] = { type: 'line', x, xLabels: x, tableX: x, tableHead: 'Año', series: mk((f) => f.ni, (y) => y.ni), format: 'money' };
-    const fig = (id, t, cap) => '<figure class="exhibit" style="margin:0"><div class="ex-head"><h4><span class="ref">P</span>' + esc(t) + '</h4><button class="btn ghost sm" data-toggle-table="' + id + '" aria-expanded="false">Ver tabla</button></div>' + (cap ? '<p class="ex-cap">' + esc(cap) + '</p>' : '') + '<div class="viz" id="' + id + '" role="figure" aria-label="' + esc(t) + '"></div><div id="' + id + '-tbl" hidden>' + RU.table(C.tableOf(reg[id]).head.map((hh, i) => ({ k: i, l: hh })), C.tableOf(reg[id]).rows.map((r) => Object.assign({}, r)), { max: 50 }) + '</div></figure>';
+    const fig = (id, t, cap) => RU.chartFig(id, reg[id], t, cap, 'P', reg);
     h += '<div class="two">' + fig('ex-proj-rev', 'Ventas: historia y escenarios', 'Línea continua: historia y escenario base. Punteadas: optimista (celeste) y pesimista (rojo).') + fig('ex-proj-ni', 'Utilidad después de impuestos', 'Incluye impuesto a la renta e intereses aunque no estén registrados en el último año.') + '</div>';
     h += fig('ex-proj-cash', 'Caja neta: caja menos deudas bancarias y línea de crédito', 'Bajo cero = la empresa debe más a los bancos de lo que tiene en caja. Es la medida más directa de cuánto financiamiento necesita cada escenario.');
     h += '<div class="blk"><h3>Escenario base, año por año</h3>' + RU.projTable(sc.base.res, { title: 'Escenario base' }) + '</div>';
@@ -13626,20 +14417,25 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     h += '<section class="sec" id="r-kpi"><div class="sec-head"><span class="eyebrow">Estado actual</span></div><div class="kpis">' + rep.kpis.map((k) => kpiTile(k, k.id === 'rev' && monthsCur.length > 3 ? '<span class="spark">' + C.sparkline(monthsCur, 120, 26, C.THEME_DOM) + '</span>' : '')).join('') + '</div></section>';
     // SCQA
     const sc = ai && ai.scqa ? { s: ai.scqa.situacion, c: ai.scqa.complicacion, q: ai.scqa.pregunta, a: ai.scqa.respuesta } : rep.scqa;
-    h += '<section class="sec" id="r-scqa"><div class="sec-head"><span class="eyebrow">Situación, complicación, pregunta y respuesta</span></div><div class="scqa"><div><span class="k">Situación</span><p>' + esc(sc.s) + '</p></div><div><span class="k">Complicación</span><p>' + esc(sc.c) + '</p></div><div class="q"><span class="k">Pregunta</span><p>' + esc(sc.q) + '</p></div><div><span class="k">Respuesta</span><p>' + esc(sc.a) + '</p></div></div></section>';
-    h += RU.memo(rep);
+    const one = (t) => (V.N && V.N.keySentence ? V.N.keySentence(t) : t);
+    const scLong = [sc.s, sc.c, sc.q, sc.a].some((t) => t && one(t) !== t);
+    h += '<section class="sec" id="r-scqa"><div class="sec-head"><span class="eyebrow">Situación, complicación, pregunta y respuesta</span></div><div class="scqa"><div><span class="k">Situación</span><p>' + esc(one(sc.s)) + '</p></div><div><span class="k">Complicación</span><p>' + esc(one(sc.c)) + '</p></div><div class="q"><span class="k">Pregunta</span><p>' + esc(sc.q) + '</p></div><div><span class="k">Respuesta</span><p>' + esc(one(sc.a)) + '</p></div></div>' + (scLong ? '<details class="more"><summary>Ver texto completo</summary><div class="more-body scqa-full"><p><b>Situación.</b> ' + esc(sc.s) + '</p><p><b>Complicación.</b> ' + esc(sc.c) + '</p><p><b>Pregunta.</b> ' + esc(sc.q) + '</p><p><b>Respuesta.</b> ' + esc(sc.a) + '</p></div></details>' : '') + '</section>';
+    h += RU.memo(rep, reg);
     // pilares
     rep.pillars.forEach((p) => {
       const ap = aiP[p.id];
       h += '<section class="sec" id="r-' + p.id + '"><div class="sec-head"><div class="row1"><span class="sec-letter">' + p.id + '</span><h2>' + esc(p.name) + '</h2>' + pill(p.status) + (ap ? '<span class="ai-badge">IA</span>' : '') + '</div><span class="q">' + esc(p.question) + '</span></div>';
       h += '<p class="answer">' + esc(ap && ap.titular ? ap.titular : p.answer) + '</p>';
       if (p.missing.length) h += '<div class="missing"><b>Datos que faltan para completar este argumento:</b> ' + esc(p.missing.map((m) => m.need + ' (' + m.impact + ')').join(' · ')) + '</div>';
+      p.exhibits.forEach((ex) => (h += RU.exhibit(ex, reg)));
+      if (p.id === 'A') h += RU.aiPrices(app);
+      const nMore = p.findings.length + p.why.length + p.risks.length;
+      h += '<details class="more"><summary>Ver hallazgos' + (p.why.length ? ', causas' : '') + (p.risks.length || (ap && ap.riesgo) ? ' y riesgos' : '') + ' (' + nMore + ')</summary><div class="more-body">';
       h += '<div class="two"><div class="blk"><h3>Hallazgos</h3>' + (p.findings.length ? '' : '<p class="muted small">Sin hallazgos con los datos cargados.</p>') + '<ul class="finds">' + p.findings.map((f) => '<li class="' + f.tone + '"><span class="t" aria-label="' + (f.tone === 'pos' ? 'positivo' : f.tone === 'neg' ? 'negativo' : 'neutral') + '">' + (f.tone === 'pos' ? '▲' : f.tone === 'neg' ? '▼' : '●') + '</span><span>' + esc(f.text) + (f.why ? '<span class="ctx">' + esc(f.why) + '</span>' : '') + '</span></li>').join('') + '</ul></div>';
       const causes = (ap && ap.causas && ap.causas.length ? ap.causas : []).concat(p.why);
       h += '<div class="blk"><h3>Por qué ocurre</h3>' + (causes.length ? '<ul class="why">' + U.uniq(causes).slice(0, 9).map((w) => '<li>' + esc(w) + '</li>').join('') + '</ul>' : '<p class="muted small">Sin causas identificables con los datos cargados.</p>') + (ap && ap.contexto_industria ? '<div class="ai-ctx" style="margin-top:10px"><b>Contexto de la industria (IA)</b><span>' + esc(ap.contexto_industria) + '</span></div>' : '') + (ap && ap.tendencia ? '<p class="small" style="margin:10px 0 0"><b>Tendencia:</b> ' + esc(ap.tendencia) + '</p>' : '') + '</div></div>';
-      p.exhibits.forEach((ex) => (h += RU.exhibit(ex, reg)));
-      if (p.id === 'A') h += RU.aiPrices(app);
       if (p.risks.length || (ap && ap.riesgo)) h += '<div class="blk"><h3>Riesgos</h3><ul class="why">' + p.risks.map((r) => '<li><b>' + esc(r.title) + '.</b> ' + esc(r.detail) + '</li>').join('') + (ap && ap.riesgo ? '<li>' + esc(ap.riesgo) + ' <span class="ai-badge">IA</span></li>' : '') + '</ul></div>';
+      h += '</div></details>';
       if (p.actions.length) h += '<div class="blk"><h3>Qué hacer</h3><div class="actions">' + p.actions.map((a) => RU.action(a)).join('') + '</div></div>';
       if (ap && ap.recomendacion) h += '<div class="ai-ctx"><b>Recomendación (IA)</b><span>' + esc(ap.recomendacion) + '</span></div>';
       h += '</section>';
@@ -13933,6 +14729,14 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         h.value = s.h;
         h.font = { bold: true, size: 12, color: { argb: NAVY } };
         mr++;
+        if (s.lead && (s.p.length > 1 || s.p[0] !== s.lead)) {
+          const c = ws.getCell(mr, 2);
+          c.value = 'En una frase: ' + s.lead;
+          c.font = { bold: true, size: 11 };
+          c.alignment = { wrapText: true, vertical: 'top' };
+          ws.getRow(mr).height = estH(c.value, 120) + 2;
+          mr++;
+        }
         s.p.forEach((ptxt, i) => {
           const c = ws.getCell(mr, 2);
           c.value = ptxt;
@@ -13946,6 +14750,51 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           mr = table(ws, mr, null, [{ h: 'Ajuste estimado', k: 'l' }, { h: 'Monto', k: 'v', f: 'money' }], [{ l: 'Resultado informado ' + a.period, v: a.ni }].concat(a.adj).concat([{ l: 'Resultado ajustado estimado', v: a.niAdj }]), { noZebra: true });
         }
         mr++;
+      });
+    }
+    /* 1b2 · comparación entre años: los datos de cada gráfico de varios años, como números */
+    const yearEx = [];
+    rep.pillars.forEach((p) => p.exhibits.forEach((e) => e.kind === 'chart' && e.years && yearEx.push(e)));
+    if (yearEx.length) {
+      ws = wb.addWorksheet('Comparación por año', { views: [{ showGridLines: false }] });
+      widths(ws, [34, 18, 18, 18, 18, 18, 18, 18]);
+      ws.getCell(1, 1).value = 'Comparación entre años';
+      ws.getCell(1, 1).font = { size: 16, bold: true, color: { argb: NAVY } };
+      ws.getCell(2, 1).value = 'Datos de los gráficos por año del reporte: hasta cinco años cerrados más el año en curso. Un período parcial se marca como tal.';
+      ws.getCell(2, 1).font = { italic: true, size: 9, color: { argb: MUTED } };
+      let yr = 4;
+      const fOf = (sp) => (sp.format === 'money' ? 'money' : sp.format === 'pct' ? 'pct' : sp.format === 'x' ? 'num2' : 'num');
+      const val = (v) => (v === null || v === undefined || !isFinite(v) ? null : v);
+      yearEx.forEach((e) => {
+        const sp = e.spec;
+        const f = fOf(sp);
+        const lab = (c, j) => String(c) + (sp.partial && sp.partial[j] ? ' (parcial)' : '');
+        let cols;
+        let rows;
+        if (sp.type === 'waterfall') {
+          cols = [{ h: 'Paso', k: 'c' }, { h: 'Monto', k: 'v0', f: 'money' }];
+          rows = sp.steps.map((st) => ({ c: st.full || st.label, v0: st.value }));
+        } else if (sp.type === 'columns') {
+          cols = [{ h: sp.tableHead || 'Período', k: 'c' }].concat(sp.series.map((se, i) => ({ h: se.name, k: 'v' + i, f }))).concat(sp.stacked ? [{ h: 'Total', k: 't', f }] : []);
+          rows = sp.categories.map((c, j) => {
+            const o = { c: lab(c, j) };
+            let t = 0;
+            sp.series.forEach((se, i) => {
+              o['v' + i] = val(se.values[j]);
+              t += o['v' + i] || 0;
+            });
+            if (sp.stacked) o.t = t;
+            return o;
+          });
+        } else if (sp.type === 'line') {
+          cols = [{ h: sp.tableHead || 'Período', k: 'c' }].concat(sp.series.map((se, i) => ({ h: se.name, k: 'v' + i, f })));
+          rows = sp.x.map((x, j) => {
+            const o = { c: lab(sp.tableX ? sp.tableX[j] : x, j) };
+            sp.series.forEach((se, i) => (o['v' + i] = val(se.values[j])));
+            return o;
+          });
+        } else return;
+        yr = table(ws, yr, e.ref + ' · ' + e.title, cols, rows, { note: e.caption });
       });
     }
     /* 1c · bancos: estados del banco e indicadores de la banca */
@@ -14693,12 +15542,14 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       table(cols.map((c) => c.l), body, Object.assign({ columnStyles: cs }, o));
       if (rows.length > (o.max || 40)) para('Se muestran ' + (o.max || 40) + ' de ' + rows.length + ' filas; la lista completa está en el Excel.', { size: 7.5, color: MUTED });
     };
-    const chart = async (spec, title, caption, ref) => {
+    const chart = async (spec, title, caption, ref, maxWmm) => {
       const pxW = 860;
       const res = C.render(spec, pxW, C.THEME_EXPORT);
       if (!res.svg) return;
-      const wmm = spec.type === 'matrix' ? Math.min(CW, 110) : CW;
-      const scale = wmm / (spec.type === 'matrix' ? Number((res.svg.match(/width="(\d+(\.\d+)?)"/) || [0, pxW])[1]) : pxW);
+      // ancho real del SVG (la matriz y las columnas con pocas categorías son más angostas): no se estira
+      const svgW = spec.type === 'matrix' ? Number((res.svg.match(/width="(\d+(\.\d+)?)"/) || [0, pxW])[1]) : res.w || pxW;
+      const wmm = spec.type === 'matrix' ? Math.min(CW, maxWmm || 110) : (CW * svgW) / pxW;
+      const scale = wmm / svgW;
       const hmm = res.h * scale;
       ensure(hmm + 12);
       if (title) {
@@ -14712,8 +15563,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         y += 5;
       }
       if (caption) para(caption, { size: 7.8, color: MUTED, after: 1.5 });
-      const wpx = spec.type === 'matrix' ? Number((res.svg.match(/width="(\d+(\.\d+)?)"/) || [0, pxW])[1]) : pxW;
-      const png = await C.toPng(res.svg, wpx, res.h, 2);
+      const png = await C.toPng(res.svg, svgW, res.h, 2);
       doc.addImage(png, 'PNG', ML, y, wmm, hmm, undefined, 'FAST');
       y += hmm + 5;
     };
@@ -14848,7 +15698,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     );
     // SCQA (se mantiene junta: si no cabe completa, pasa a la página siguiente)
     const sc = ai && ai.scqa ? { s: ai.scqa.situacion, c: ai.scqa.complicacion, q: ai.scqa.pregunta, a: ai.scqa.respuesta } : rep.scqa;
-    const scRows = [['Situación', sc.s], ['Complicación', sc.c], ['Pregunta', sc.q], ['Respuesta', sc.a]].filter((r) => r[1]);
+    const key1 = (t) => (V.N && V.N.keySentence ? V.N.keySentence(t) : t);
+    const scFull = [['Situación', sc.s], ['Complicación', sc.c], ['Pregunta', sc.q], ['Respuesta', sc.a]].filter((r) => r[1]);
+    const scRows = scFull.map(([k, v]) => [k, k === 'Pregunta' ? v : key1(v)]);
+    const scLong = scFull.some(([k, v], i) => v !== scRows[i][1]);
     const scH = 4.6 + scRows.reduce((acc, [k, v]) => acc + lines(v, 9.2, CW - 30, k === 'Pregunta' ? 'times' : 'helvetica', k === 'Pregunta' ? 'bold' : 'normal').length * lh(9.2) + 2.5, 0);
     ensure(scH + 2);
     label('Situación · Complicación · Pregunta · Respuesta');
@@ -14908,10 +15761,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         },
       });
     };
-    if (rep.memo) {
-      newPage();
-      secTitle(rep.memo.title, rep.memo.subtitle + '. Redactado por el motor de reglas a partir de las cifras, sin IA.');
-      rep.memo.sections.forEach((s, si) => {
+    // texto completo de una sección del informe (en el anexo)
+    const memoFull = (s, si, firstBig) => {
         ensure(16);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10.5);
@@ -14937,21 +15788,42 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
               y += tl1.length * lh(9.4);
               para(t.slice(k + 2), { size: 9.4, font: 'times', color: INK2, indent: 7, after: 2 });
             } else para(t, { size: 9.4, font: 'times', color: INK2, indent: 7, after: 2 });
-          } else para(ptxt, { size: si === 0 && i === 0 ? 11 : 9.6, font: 'times', style: si === 0 && i === 0 ? 'bold' : 'normal', color: si === 0 && i === 0 ? INK : INK2, after: 2.2 });
+          } else para(ptxt, { size: firstBig && si === 0 && i === 0 ? 11 : 9.6, font: 'times', style: firstBig && si === 0 && i === 0 ? 'bold' : 'normal', color: firstBig && si === 0 && i === 0 ? INK : INK2, after: 2.2 });
         });
         if (/^5\./.test(s.h) && rep.memo.adjusted) {
           const a = rep.memo.adjusted;
           tableFrom([{ l: 'Ajuste estimado', k: 'l' }, { l: 'Monto', k: 'v', f: 'money', w: 34 }], [{ l: 'Resultado informado ' + a.period, v: a.ni }].concat(a.adj).concat([{ l: 'Resultado ajustado estimado', v: a.niAdj }]));
         }
         y += 1.5;
-      });
+    };
+    const memoVisual = rep.memo && rep.memo.sections.some((s) => s.lead !== undefined);
+    if (rep.memo) {
+      newPage();
+      secTitle(rep.memo.title, rep.memo.subtitle + '. Redactado por el motor de reglas a partir de las cifras, sin IA.' + (memoVisual ? ' Cada sección resume su idea en una frase y un gráfico; el texto completo está en el anexo.' : ''));
+      let si = 0;
+      for (const s of rep.memo.sections) {
+        if (!memoVisual || s.lead === undefined) memoFull(s, si, true);
+        else {
+          ensure(s.chart ? 70 : 16);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10.5);
+          setC(NAVY);
+          doc.text(T(s.h), ML, y, { baseline: 'top' });
+          y += 5.5;
+          para(s.lead, { size: si === 0 ? 11 : 10, font: 'times', style: 'bold', color: INK, after: 2.2 });
+          if (s.chart && s.chart.spec) await chart(s.chart.spec, s.chart.title, s.chart.caption, null, 80);
+          y += 2;
+        }
+        si++;
+      }
     }
 
     /* ===== pilares ===== */
     let firstPillar = true;
     for (const p of rep.pillars) {
-      // si la página actual quedó casi vacía (la SCQA pasó sola a una página nueva), el primer pilar sigue en ella
-      if (firstPillar && doc.getNumberOfPages() > 1 && y < PH * 0.45) y += 8;
+      // si la página actual quedó casi vacía (la SCQA pasó sola a una página nueva, o el pilar anterior dejó solo su
+      // última acción), el pilar sigue en ella
+      if (doc.getNumberOfPages() > 1 && y < PH * (firstPillar ? 0.45 : 0.3)) y += 8;
       else newPage();
       firstPillar = false;
       const ap = aiP[p.id];
@@ -14969,17 +15841,6 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       para(p.question, { size: 8.5, color: MUTED });
       para(ap && ap.titular ? ap.titular : p.answer, { size: 12, font: 'times', style: 'bold', color: INK, after: 3 });
       if (p.missing.length) para('Datos que faltan: ' + p.missing.map((m) => m.need + ' (' + m.impact + ')').join(' · '), { size: 8.3, color: [125, 82, 0] });
-      label('Hallazgos');
-      bullets(p.findings.map((f) => ({ text: f.text + (f.why ? ' ' + f.why : ''), tone: f.tone })));
-      const causes = U.uniq((ap && ap.causas ? ap.causas : []).concat(p.why));
-      if (causes.length) {
-        label('Por qué ocurre');
-        bullets(causes.slice(0, 9).map((t) => ({ text: t })));
-      }
-      if (ap && ap.contexto_industria) {
-        label('Contexto de la industria (IA)');
-        para(ap.contexto_industria, { size: 9 });
-      }
       for (const ex of p.exhibits) {
         if (ex.kind === 'chart') await chart(ex.spec, ex.title, ex.caption, ex.ref);
         else if (ex.kind === 'table') {
@@ -15028,6 +15889,17 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           });
           para(RT.source + ' ' + V.I.BENCH_NOTE, { size: 7.3, color: MUTED });
         }
+      }
+      label('Hallazgos');
+      bullets(p.findings.map((f) => ({ text: f.text + (f.why ? ' ' + f.why : ''), tone: f.tone })));
+      const causes = U.uniq((ap && ap.causas ? ap.causas : []).concat(p.why));
+      if (causes.length) {
+        label('Por qué ocurre');
+        bullets(causes.slice(0, 9).map((t) => ({ text: t })));
+      }
+      if (ap && ap.contexto_industria) {
+        label('Contexto de la industria (IA)');
+        para(ap.contexto_industria, { size: 9 });
       }
       const aiPr = p.id === 'A' && app.ai.prices && app.ai.prices.items && app.ai.prices.items.length ? app.ai.prices.items : null;
       if (aiPr) {
@@ -15180,6 +16052,14 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const Q = rep.quality;
     let annexN = 0;
     const aLabel = (txt) => label('A' + ++annexN + ' · ' + txt);
+    if (memoVisual) {
+      aLabel(rep.memo.title + ': texto completo');
+      rep.memo.sections.forEach((s, si) => memoFull(s, si, false));
+    }
+    if (scLong) {
+      aLabel('Situación, complicación, pregunta y respuesta: texto completo');
+      scFull.forEach(([k, v]) => para(k + '. ' + v, { size: 9, color: INK2, after: 1.6 }));
+    }
     aLabel('Calidad de los datos: ' + Q.score + '/100 (' + Q.grade + ')');
     tableFrom([{ l: 'Dimensión', v: (d) => d[1], w: 34 }, { l: 'Puntaje', v: (d) => Q.dims[d[0]], f: 'num', w: 20 }, { l: 'Qué mide', v: (d) => d[2] }], V.Q.DIMS);
     const iss = Q.issues.concat(Q.fixes.map((f) => Object.assign({ fixed: true }, f)));
@@ -15306,6 +16186,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       return out;
     };
     const addTable = (s, head, rows, box, opts) => s.addTable(tableRows(head, rows, opts), Object.assign({ fontFace: FONT, fontSize: 10, color: INK, border: { type: 'solid', pt: 0.5, color: RULE }, margin: 0.05, autoPage: false }, box));
+    // color de una serie (categórica, por año o por rol) en hexadecimal sin "#"
+    const hexOf = (se, i, fallback) => (se.cat !== undefined || se.tone !== undefined ? V.C.colorOf(se, V.C.THEME_EXPORT, i).replace('#', '') : fallback);
     const barChart = (s, spec, box, extra) => {
       const data = spec.series.map((se) => ({ name: se.name, labels: spec.categories.map((c) => U.truncate(c, 34)), values: se.values.map((v) => (spec.format === 'money' ? mv(v) : v === null ? 0 : v)) }));
       const allV = [].concat(...data.map((d) => d.values)).filter((v) => isFinite(v));
@@ -15318,7 +16200,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           barDir: 'bar',
           barGrouping: 'clustered',
           catAxisOrientation: 'maxMin',
-          chartColors: spec.series.map((se, i) => (se.role === 'prev' ? PREV : CUR)),
+          chartColors: spec.series.map((se, i) => hexOf(se, i, se.role === 'prev' ? PREV : CUR)),
           showLegend: spec.series.length > 1,
           legendPos: 't',
           legendFontSize: 10,
@@ -15350,7 +16232,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const labels = spec.xLabels;
       const data = spec.series.map((se) => ({ name: se.name, labels, values: se.values.map((v) => (v === null || v === undefined ? null : spec.format === 'money' ? mv(v) : v)) }));
       s.addChart(pptx.ChartType.line, data, Object.assign({
-        chartColors: spec.series.map((se) => (se.role === 'prev' ? PREV : se.role === 'fc' ? '8A94A5' : CUR)),
+        chartColors: spec.series.map((se, i) => hexOf(se, i, se.role === 'prev' ? PREV : se.role === 'fc' ? '8A94A5' : CUR)),
         lineSize: 2,
         lineDataSymbol: 'none',
         showLegend: true,
@@ -15376,18 +16258,21 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       return m ? m[1] : String(t);
     };
     // gráfico del motor propio como imagen (cascada de caja: no existe como gráfico nativo)
-    const imgChart = async (s, spec, box, maxH) => {
-      const pxW = 860;
+    const imgChart = async (s, spec, box, maxH, pxWide) => {
+      const pxW = pxWide || 860;
       const res = V.C.render(spec, pxW, V.C.THEME_EXPORT);
       if (!res || !res.svg) return;
-      const png = await V.C.toPng(res.svg, pxW, res.h, 2);
-      let w = box.w;
-      let h = (w * res.h) / pxW;
+      // ancho real del SVG: un gráfico angosto (pocas columnas) conserva su proporción
+      const wpx = res.w || (spec.type === 'matrix' ? Number((res.svg.match(/width="(\d+(\.\d+)?)"/) || [0, pxW])[1]) : pxW);
+      const png = await V.C.toPng(res.svg, wpx, res.h, 2);
+      let w = (box.w * wpx) / pxW;
+      let h = (w * res.h) / wpx;
       if (maxH && h > maxH) {
         w = (w * maxH) / h;
         h = maxH;
       }
       s.addImage({ data: png.replace(/^data:/, ''), x: box.x, y: box.y, w, h });
+      return { w, h };
     };
     // estado financiero comparativo (totales en negrita, encabezados de grupo en gris)
     const stmtTableP = (s, data, box, maxP, withPct) => {
@@ -15529,7 +16414,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           // en "cómo se financió" interesa el último año, no el anterior
           const lastCf = app.fin && app.fin.cash.length ? app.fin.cash[app.fin.cash.length - 1] : null;
           const para = /^3\./.test(x.h) && lastCf ? x.p.find((t) => t.indexOf('En ' + lastCf.to + ',') === 0) || x.p[0] : x.p[0];
-          return { h: x.h.replace(/^\d+\.\s*/, ''), t: firstSentence(para) };
+          return { h: x.h.replace(/^\d+\.\s*/, ''), t: x.lead || firstSentence(para) };
         });
       label(s, 'Diagnóstico', 0.5, 1.6, 6.2);
       s.addText([].concat(...diag.map((x, i) => [{ text: x.h, options: { bold: true, color: NAVY, fontSize: 11.5, breakLine: true } }, { text: x.t, options: { color: INK2, fontSize: 11, breakLine: i < diag.length - 1, paraSpaceAfter: 9 } }])), { x: 0.5, y: 1.9, w: 6.2, h: 4.95, fontFace: FONT, valign: 'top', fit: 'shrink' });
@@ -15543,6 +16428,21 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         addTable(s, ['Concepto', 'Monto'], rowsA, { x: 7.0, y: 5.5, w: 5.85, colW: [4.3, 1.55], fontSize: 9 }, { right: [1], cell: (i) => (i === rowsA.length - 1 ? { bold: true } : {}) });
       }
       notes(s, memo.sections.map((x) => x.h + '\n' + x.p.join('\n')));
+      // secciones con un gráfico propio (utilidad ajustada, hallazgos y efecto de las acciones): una lámina cada una,
+      // con la frase de la sección como título y el texto completo en las notas
+      for (const x of memo.sections.filter((m) => m.chart && m.chart.spec && /^(1|5|6|8)\./.test(m.h))) {
+        s = slide();
+        eyebrow(s, (memo.title || 'Informe del consultor') + ' · ' + x.h.replace(/^\d+\.\s*/, ''));
+        title(s, x.lead);
+        label(s, x.chart.title, 0.5, 1.6, 12.35);
+        try {
+          await imgChart(s, x.chart.spec, { x: 0.5, y: 1.95, w: 12.35 }, 4.85, 1000);
+        } catch (e) {
+          console.warn('No se pudo dibujar el gráfico del informe:', e);
+        }
+        if (x.chart.caption) s.addText(x.chart.caption, { x: 0.5, y: 6.85, w: 12.35, h: 0.3, fontFace: FONT, fontSize: 9, italic: true, color: MUTED });
+        notes(s, [x.h + '\n' + x.p.join('\n')]);
+      }
     }
 
     /* 4 · indicadores */
@@ -15576,11 +16476,20 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       eyebrow(s, p.id + ' · ' + p.name);
       title(s, ap && ap.titular ? ap.titular : p.answer);
       chip(s, p.status, 11.72, 0.24);
-      const main = p.exhibits.find((e) => e.kind === 'chart' && (e.spec.type === 'line' || e.spec.type === 'bars'));
+      const main = p.exhibits.find((e) => e.kind === 'chart' && !e.years && (e.spec.type === 'line' || e.spec.type === 'bars'));
       // banco: la cascada de ingresos a utilidad (imagen) o la tabla de indicadores del pilar
       const bankX = rep.bank && !main ? p.exhibits.find((e) => e.kind === 'chart' && e.spec.type === 'waterfall') || p.exhibits.find((e) => e.kind === 'table' && e.rows.length && e.rows.length <= 14) : null;
       const left = { x: 0.5, y: 1.7, w: 7.4, h: 4.6 };
-      if (main) {
+      // sin un gráfico del período (p. ej. solo estados financieros), la lámina principal usa el primer gráfico por año
+      const mainYear = !main && !bankX && p.id !== 'D' ? p.exhibits.find((e) => e.kind === 'chart' && e.years && e.spec.type !== 'waterfall') : null;
+      if (mainYear) {
+        label(s, mainYear.ref + ' · ' + String(mainYear.title).split(':')[0], 0.5, 1.55, 7.4);
+        try {
+          await imgChart(s, Object.assign({}, mainYear.spec, { h: 420 }), { x: 0.5, y: 1.9, w: 7.4 }, 4.4, 700);
+        } catch (e) {
+          console.warn('No se pudo dibujar el gráfico principal:', e);
+        }
+      } else if (main) {
         label(s, main.ref + ' · ' + main.title, 0.5, 1.55, 7.4);
         if (main.spec.type === 'line') lineChart(s, main.spec, { x: 0.5, y: 1.85, w: 7.4, h: 4.4 });
         else barChart(s, main.spec, { x: 0.5, y: 1.85, w: 7.4, h: 4.4 }, main.spec.diverging ? { chartColors: [CUR], invertedColors: [NEG], valAxisLabelFormatCode: '0%' } : {});
@@ -15607,6 +16516,38 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       }
       if (p.actions.length) s.addText([{ text: 'Qué hacer: ', options: { bold: true, color: NAVY } }, { text: p.actions.slice(0, 3).map((a) => a.title).join('  ·  '), options: { color: INK } }], { x: 0.5, y: 6.45, w: 12.35, h: 0.5, fontFace: FONT, fontSize: 11, fill: { color: SOFT }, valign: 'middle', margin: 0.1, fit: 'shrink' });
       notes(s, [p.question, 'Hallazgos:\n- ' + p.findings.map((f) => f.text).join('\n- '), p.why.length ? 'Por qué:\n- ' + p.why.join('\n- ') : '', ap && ap.contexto_industria ? 'Contexto de la industria (IA): ' + ap.contexto_industria : '', p.actions.length ? 'Acciones:\n- ' + p.actions.map((a) => a.title + ': ' + a.detail + ' (' + a.impactText + ')').join('\n- ') : '']);
+
+      // comparación entre años: dos gráficos por lámina (una cascada va sola, a todo el ancho); el título es la
+      // conclusión del primero y cada gráfico lleva su nota debajo
+      const yx = p.exhibits.filter((e) => e.kind === 'chart' && e.years && e !== mainYear);
+      const shortT = (t) => String(t).split(':')[0];
+      const groups = [];
+      const pairable = yx.filter((e) => e.spec.type !== 'waterfall');
+      for (let i = 0; i < pairable.length; i += 2) groups.push(pairable.slice(i, i + 2));
+      yx.filter((e) => e.spec.type === 'waterfall').forEach((e) => groups.push([e]));
+      const capUnder = (e, x, y, w) => e.caption && s.addText(e.caption, { x, y, w, h: Math.max(0.3, 7.0 - y), fontFace: FONT, fontSize: 9.5, italic: true, color: MUTED, valign: 'top', fit: 'shrink' });
+      for (const pair of groups) {
+        s = slide();
+        eyebrow(s, p.id + ' · ' + p.name + ' · comparación entre años');
+        title(s, pair[0].title);
+        try {
+          if (pair.length === 2) {
+            for (let k = 0; k < 2; k++) {
+              const x = k ? 6.8 : 0.5;
+              label(s, pair[k].ref + ' · ' + shortT(pair[k].title), x, 1.55, 6.05);
+              const d = await imgChart(s, Object.assign({}, pair[k].spec, { h: 390 }), { x, y: 1.9, w: 6.05 }, 4.3, 560);
+              if (d) capUnder(pair[k], x, 1.95 + d.h, 6.05);
+            }
+          } else {
+            label(s, pair[0].ref + ' · ' + shortT(pair[0].title), 0.5, 1.55, 12.35);
+            const d = await imgChart(s, Object.assign({}, pair[0].spec, { h: 430 }), { x: 0.5, y: 1.9, w: 12.35 }, 4.55, 1000);
+            if (d) capUnder(pair[0], 0.5, 1.95 + d.h, 12.35);
+          }
+        } catch (e) {
+          console.warn('No se pudo dibujar un gráfico por año:', e);
+        }
+        notes(s, pair.map((e) => e.ref + ' · ' + e.title + '. ' + (e.caption || '')));
+      }
 
       // láminas de apoyo
       if (p.id === 'A') {
@@ -15706,7 +16647,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       }
       if (p.id === 'B') {
         const tblEx = exOf(p, (e) => e.kind === 'table' && /categor/i.test(e.title));
-        const lineEx = exOf(p, (e) => e.kind === 'chart' && e.spec.type === 'line');
+        const lineEx = exOf(p, (e) => e.kind === 'chart' && !e.years && e.spec.type === 'line');
         if (tblEx || lineEx) {
           s = slide();
           eyebrow(s, 'B · Qué se está comiendo el margen');
@@ -15789,7 +16730,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           } else stmtTableP(s, Object.assign({}, exB.data, { periods: ps3 }), { x: 0.5, y: 1.7, w: 12.35 }, 3, true);
           notes(s, [exB.caption, exB.data.periods.length > 3 ? 'La lámina muestra los últimos tres cierres; la serie completa está en el Excel exportado (hoja "Estados financieros").' : '']);
         }
-        const exW = exOf(p, (e) => e.kind === 'chart' && e.spec.type === 'waterfall');
+        const exW = exOf(p, (e) => e.kind === 'chart' && !e.years && e.spec.type === 'waterfall');
         const exF = exOf(p, (e) => e.kind === 'table' && /flujo de efectivo/i.test(e.title));
         const cf = FIN.cash.length ? FIN.cash[FIN.cash.length - 1] : null;
         if (cf && (exW || exF)) {
@@ -16503,11 +17444,18 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       });
     }
 
-    // ---- estados financieros (M$) ----
+    // ---- estados financieros (M$): 2024 y 2025 salen de las ventas generadas; 2022 y 2023, de una historia
+    // de crecimiento razonable (para mostrar la comparación de varios años) ----
     const R = { 2024: truth.rev[2024], 2025: truth.rev[2025] };
-    const C = { 2024: truth.cogs[2024], 2025: truth.cogs[2025] };
+    R[2023] = R[2024] / 1.064;
+    R[2022] = R[2023] / 1.087;
+    const c24 = truth.cogs[2024] / truth.rev[2024];
+    const C = { 2022: R[2022] * (c24 + 0.004), 2023: R[2023] * (c24 - 0.002), 2024: truth.cogs[2024], 2025: truth.cogs[2025] };
     const OX = { 2024: truth.opex[2024], 2025: truth.opex[2025] };
-    const FIN = { 2024: 0.011 * R[2024], 2025: 0.016 * R[2025] };
+    OX[2023] = OX[2024] / 1.055;
+    OX[2022] = OX[2023] / 1.061;
+    const FIN = { 2022: 0.009 * R[2022], 2023: 0.01 * R[2023], 2024: 0.011 * R[2024], 2025: 0.016 * R[2025] };
+    const DEP = { 2022: truth.dep[2024] * 0.87, 2023: truth.dep[2024] * 0.93, 2024: truth.dep[2024], 2025: truth.dep[2025] };
     const ebit = (y) => R[y] - C[y] - OX[y];
     const ebt = (y) => ebit(y) - FIN[y];
     const tax = (y) => Math.max(0, ebt(y) * 0.27);
@@ -16555,46 +17503,78 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     b25.ta = b25.ca + b25.ppe;
     b25.cl = b25.ap + b25.stl + b25.ocl;
     b25.tl = b25.cl + b25.ltl;
+    // años anteriores: mismas proporciones de operación; el patrimonio retrocede con las utilidades retenidas
+    // (se repartió la mitad de cada año) y el préstamo de corto plazo cuadra el balance
+    const back = (y, next) => {
+      const b = {
+        ar: (R[y] * 9.5) / 365,
+        inv: (C[y] * 72) / 365,
+        oca: 0.012 * R[y],
+        ppe: next.ppe / 1.045,
+        ap: (C[y] * 60) / 365,
+        ocl: 0.034 * R[y],
+        ltl: 0.08 * R[y],
+        cap: next.cap,
+        cash: 0.075 * R[y],
+      };
+      b.eq = next.eq - ni(y + 1) + 0.5 * ni(y);
+      b.re = b.eq - b.cap;
+      b.stl = b.ar + b.inv + b.oca + b.ppe + b.cash - b.eq - b.ap - b.ocl - b.ltl;
+      if (b.stl < 0) {
+        b.cash -= b.stl;
+        b.stl = 0;
+      }
+      b.ca = b.cash + b.ar + b.inv + b.oca;
+      b.ta = b.ca + b.ppe;
+      b.cl = b.ap + b.stl + b.ocl;
+      b.tl = b.cl + b.ltl;
+      return b;
+    };
+    const b23 = (bal[2023] = back(2023, b24));
+    const b22 = (bal[2022] = back(2022, b23));
     const k = (x) => fmtCL(x / 1000);
+    const YS = [2025, 2024, 2023, 2022];
+    const B = (fn) => YS.map((y) => k(fn(bal[y], y)));
+    const P = (fn) => YS.map((y) => '(' + k(fn(y)) + ')');
     const bsGrid = [
-      ['Estado de situación financiera al 31 de diciembre (M$)', '2025', '2024'],
-      ['Efectivo y equivalentes al efectivo', k(b25.cash), k(b24.cash)],
-      ['Deudores comerciales', k(b25.ar), k(b24.ar)],
-      ['Inventarios', k(b25.inv), k(b24.inv)],
-      ['Otros activos corrientes', k(b25.oca), k(b24.oca)],
-      ['Total activos corrientes', k(b25.ca), k(b24.ca)],
-      ['Propiedades, planta y equipo (neto)', k(b25.ppe), k(b24.ppe)],
-      ['Total activos no corrientes', k(b25.ppe), k(b24.ppe)],
-      ['Total activos', k(b25.ta), k(b24.ta)],
-      ['Cuentas por pagar comerciales', k(b25.ap), k(b24.ap)],
-      ['Préstamos bancarios de corto plazo', k(b25.stl), k(b24.stl)],
-      ['Otros pasivos corrientes', k(b25.ocl), k(b24.ocl)],
-      ['Total pasivos corrientes', k(b25.cl), k(b24.cl)],
-      ['Préstamos bancarios de largo plazo', k(b25.ltl), k(b24.ltl)],
-      ['Total pasivos no corrientes', k(b25.ltl), k(b24.ltl)],
-      ['Total pasivos', k(b25.tl), k(b24.tl)],
-      ['Capital pagado', k(b25.cap), k(b24.cap)],
-      ['Resultados acumulados', k(b25.re), k(b24.re)],
-      ['Total patrimonio', k(b25.eq), k(b24.eq)],
-      ['Total pasivos y patrimonio', k(b25.tl + b25.eq), k(b24.tl + b24.eq)],
+      ['Estado de situación financiera al 31 de diciembre (M$)'].concat(YS.map(String)),
+      ['Efectivo y equivalentes al efectivo'].concat(B((b) => b.cash)),
+      ['Deudores comerciales'].concat(B((b) => b.ar)),
+      ['Inventarios'].concat(B((b) => b.inv)),
+      ['Otros activos corrientes'].concat(B((b) => b.oca)),
+      ['Total activos corrientes'].concat(B((b) => b.ca)),
+      ['Propiedades, planta y equipo (neto)'].concat(B((b) => b.ppe)),
+      ['Total activos no corrientes'].concat(B((b) => b.ppe)),
+      ['Total activos'].concat(B((b) => b.ta)),
+      ['Cuentas por pagar comerciales'].concat(B((b) => b.ap)),
+      ['Préstamos bancarios de corto plazo'].concat(B((b) => b.stl)),
+      ['Otros pasivos corrientes'].concat(B((b) => b.ocl)),
+      ['Total pasivos corrientes'].concat(B((b) => b.cl)),
+      ['Préstamos bancarios de largo plazo'].concat(B((b) => b.ltl)),
+      ['Total pasivos no corrientes'].concat(B((b) => b.ltl)),
+      ['Total pasivos'].concat(B((b) => b.tl)),
+      ['Capital pagado'].concat(B((b) => b.cap)),
+      ['Resultados acumulados'].concat(B((b) => b.re)),
+      ['Total patrimonio'].concat(B((b) => b.eq)),
+      ['Total pasivos y patrimonio'].concat(B((b) => b.tl + b.eq)),
     ];
     const isGrid = [
-      ['Estado de resultados (M$)', '2025', '2024'],
-      ['Ingresos de actividades ordinarias', k(R[2025]), k(R[2024])],
-      ['Costo de ventas', '(' + k(C[2025]) + ')', '(' + k(C[2024]) + ')'],
-      ['Ganancia bruta', k(R[2025] - C[2025]), k(R[2024] - C[2024])],
-      ['Gastos de administración y ventas', '(' + k(OX[2025]) + ')', '(' + k(OX[2024]) + ')'],
-      ['Resultado operacional', k(ebit(2025)), k(ebit(2024))],
-      ['Gastos financieros', '(' + k(FIN[2025]) + ')', '(' + k(FIN[2024]) + ')'],
-      ['Resultado antes de impuestos', k(ebt(2025)), k(ebt(2024))],
-      ['Impuesto a la renta', '(' + k(tax(2025)) + ')', '(' + k(tax(2024)) + ')'],
-      ['Ganancia neta del ejercicio', k(ni(2025)), k(ni(2024))],
-      ['Depreciación del ejercicio (incluida en gastos)', k(truth.dep[2025]), k(truth.dep[2024])],
+      ['Estado de resultados (M$)'].concat(YS.map(String)),
+      ['Ingresos de actividades ordinarias'].concat(YS.map((y) => k(R[y]))),
+      ['Costo de ventas'].concat(P((y) => C[y])),
+      ['Ganancia bruta'].concat(YS.map((y) => k(R[y] - C[y]))),
+      ['Gastos de administración y ventas'].concat(P((y) => OX[y])),
+      ['Resultado operacional'].concat(YS.map((y) => k(ebit(y)))),
+      ['Gastos financieros'].concat(P((y) => FIN[y])),
+      ['Resultado antes de impuestos'].concat(YS.map((y) => k(ebt(y)))),
+      ['Impuesto a la renta'].concat(P((y) => tax(y))),
+      ['Ganancia neta del ejercicio'].concat(YS.map((y) => k(ni(y)))),
+      ['Depreciación del ejercicio (incluida en gastos)'].concat(YS.map((y) => k(DEP[y]))),
     ];
     const chartGrid = [['Mes', 'Ventas 2025 (MM$)']].concat(
       U.monthRange('2025-01', '2025-12').map((mk) => [U.MONTHS_SHORT[Number(mk.slice(5)) - 1], U.round(truth.revByMonth[mk] / 1e6, 1)])
     );
-    truth.ni = { 2024: ni(2024), 2025: ni(2025) };
+    truth.ni = { 2022: ni(2022), 2023: ni(2023), 2024: ni(2024), 2025: ni(2025) };
     truth.bal = bal;
 
     const texts = {
