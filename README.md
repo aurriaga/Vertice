@@ -1,8 +1,27 @@
-# Vértice Gerencial · versión 2.2.1
+# Vértice Gerencial · versión 2.3
 
 Reportes para la toma de decisiones a partir de los archivos que entrega la empresa (Excel, CSV, PDF con texto o escaneado, imágenes, Word, PowerPoint, exportes de Power BI, JSON, XML, HTML o una tabla pegada). El informe se arma con el **Principio de la Pirámide** (Barbara Minto): primero la conclusión y la decisión que se pide, después cuatro argumentos MECE con su evidencia.
 
-## Qué hay de nuevo en la 2.2.1
+## Qué hay de nuevo en la 2.3
+
+**Revisión de auditoría (contable NIIF para PYMES y tributaria)**
+
+- Lee los **formularios 22** de la carpeta tributaria: régimen (Pro Pyme, semi integrado), ingresos y egresos, base imponible, impuesto de primera categoría, PPM y resultado de la declaración. Verifica que la tasa aplicada sea la del régimen y año (Pro Pyme: 10% hasta 2023, 12,5% en 2024–2027, 15% en 2028 y 25% desde 2029; semi integrado 27%) y avisa si los estados financieros replican el F22 (base percibida y pagada en vez de contabilidad devengada).
+- Nuevos hallazgos tipo auditoría: inventario o activo fijo que no se actualizan, cuentas por conciliar o sin rendir, saldos con socios y empresas relacionadas, saldos con signo contrario, notas de crédito altas, gastos de perfil personal, cotizaciones por pagar sin movimiento, honorarios sin retención, tasa de PPM distinta a la del régimen, IVA exportador por recuperar, financiamiento nuevo (factoring), corte del período, impuestos diferidos, vacaciones, activos biológicos y empresa en marcha. Cada uno trae su efecto, la norma y qué hacer.
+- Lee las **notas** que trae un estado financiero ("no se determinó el costo de ventas") y no presenta como confiable un margen o una utilidad que esas notas advierten incompletos.
+- Concilia el **registro de compras y ventas con el F29** documento a documento (liquidaciones-factura, facturas de compra y notas de crédito de exportación).
+- Lee mejor los balances de planillas contables: suma todas las cuentas de un mismo tipo (dos bancos, préstamo y factoring), distingue activos y pasivos por el código o la posición de la cuenta y entiende los balances con saldos con signo.
+- Concentración de clientes y proveedores con el registro del SII, crecimiento del año en curso y una proyección de 6 meses con límites razonables.
+
+**Seguridad y privacidad**
+
+- La librería de Excel se actualizó a SheetJS 0.20.3 (corrige dos vulnerabilidades al abrir archivos manipulados). Su huella se verificó contra la versión oficial.
+- La app instalable trae una **política de seguridad de contenido** que bloquea scripts que no sean de Vértice, no se deja abrir dentro de páginas ajenas y no envía datos a ningún servidor.
+- Los archivos de sesión y lo guardado en el navegador se validan antes de usarse, y los archivos demasiado grandes o "zip bomba" no se abren.
+- Nueva opción en **1 · Fuentes**: elegir si el navegador recuerda tu último análisis, y un botón para **borrar los datos guardados** (útil en computadores compartidos).
+- En la versión de claude.ai, las librerías se cargan con verificación de integridad, y la IA trata el contenido de los archivos como datos, no como instrucciones.
+
+## Lo que trajo la 2.2.1
 
 **Documentos largos**
 
@@ -72,10 +91,12 @@ Reportes para la toma de decisiones a partir de los archivos que entrega la empr
 
 Los archivos se procesan en el navegador y no se suben a ningún servidor. En claude.ai, solo cuando usas una función con IA se envía a Claude un resumen de las cifras calculadas.
 
+**Privacidad en GitHub Pages.** Todas las apps publicadas en `TU-USUARIO.github.io` comparten el almacenamiento del navegador. Si publicas otras apps ahí, o usas un computador compartido, desmarca "Recordar mi último análisis" y guarda tus análisis como archivo (Exportar → Guardar análisis). Para aislar Vértice por completo, publícala con un dominio propio (Settings → Pages → Custom domain). Activa también la verificación en dos pasos de tu cuenta de GitHub: quien entre a tu cuenta podría cambiar la app que usan tus clientes.
+
 ## Actualizar tu app en GitHub Pages (si ya la tienes publicada)
 
 1. Entra a tu repositorio (por ejemplo `github.com/TU-USUARIO/vertice`).
-2. Usa **Add file → Upload files** y arrastra `index.html`, `sw.js` y `README.md`. Desde la 2.1 solo cambian esos archivos; si vienes de una versión anterior a la 2.1, sube **todo el contenido** de esta carpeta (`index.html`, `sw.js`, `manifest.webmanifest`, `.nojekyll` y las carpetas `vendor`, `fonts` e `icons`). Los archivos con el mismo nombre se reemplazan.
+2. Usa **Add file → Upload files** y arrastra `index.html`, `sw.js` y `README.md`. **En la 2.3 también cambia `vendor/xlsx.full.min.js`**: entra a la carpeta `vendor` del repositorio y súbelo ahí (reemplaza al anterior). Si vienes de una versión anterior a la 2.1, sube **todo el contenido** de esta carpeta (`index.html`, `sw.js`, `manifest.webmanifest`, `.nojekyll` y las carpetas `vendor`, `fonts` e `icons`). Los archivos con el mismo nombre se reemplazan.
 3. Presiona **Commit changes** y espera uno o dos minutos.
 4. Abre la app con conexión: toma la versión nueva sola. Si todavía ves la anterior, ciérrala y ábrela de nuevo (en el navegador, Ctrl + F5).
 
