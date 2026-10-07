@@ -1,8 +1,41 @@
-# Vértice Gerencial · versión 2.4
+# Vértice Gerencial · versión 2.5
 
 Reportes para la toma de decisiones a partir de los archivos que entrega la empresa (Excel, CSV, PDF con texto o escaneado, imágenes, Word, PowerPoint, exportes de Power BI, JSON, XML, HTML o una tabla pegada). El informe se arma con el **Principio de la Pirámide** (Barbara Minto): primero la conclusión y la decisión que se pide, después cuatro argumentos MECE con su evidencia.
 
-## Qué hay de nuevo en la 2.4
+## Qué hay de nuevo en la 2.5
+
+**Lectura de estados financieros en PDF (formato IFRS y CMF)**
+
+- Toma la **empresa, el estado, la fecha y la unidad** del encabezado de cada página ("TELEVISION NACIONAL DE CHILE / Estados de situación financiera / Al 31 de marzo de 2026 / En miles de pesos M$"). Antes, si "M$" no estaba junto a la tabla, las cifras quedaban mil veces menores.
+- El guion "-" de los estados chilenos se lee como cero. Antes, una columna con varios guiones dejaba de reconocerse como montos.
+- Encabezados de dos o tres líneas ("01/01/2026 al" / "30/06/2026" / "M$") y rangos de dos fechas se leen como el período completo. Una columna "Variación" ya no se confunde con un año.
+- Los **estados principales mandan**: cuando las páginas dicen "Estado de situación financiera" o "Estado de resultados", esas cifras son las del reporte. Las notas al pie solo completan lo que falta y ya no se suman como ventas ni gastos (antes un PDF de TVN mostraba "vendió $ 1.297 MM" en vez de $ 10.801 MM).
+- Rótulos IFRS corregidos: "Ganancia (pérdida) bruta" es el margen bruto, "Pérdida del ejercicio" es el resultado, "Utilidad neta retenida" son resultados acumulados y "Depreciación acumulada" no es el gasto del período.
+- Si un período queda **mil o un millón de veces menor** que los demás, se lleva a la misma unidad y se avisa.
+- Formatos de la CMF para sociedades de servicios financieros: las comisiones son la venta y lo que se paga por comisiones, el costo.
+- Nombre de la empresa: la línea que encabeza las páginas, o "X S.A. y subsidiarias" en el texto. Ya no se toma una oración de una nota.
+
+**Balances en Excel**
+
+- **Balance de comprobación con solo Debe y Haber** (también como tabla dinámica "Suma de DEBE"): se lee como balance y arma el estado de situación y el de resultados.
+- Si las cuentas de resultado vienen **cerradas** (debe = haber), el resultado del año se reconstruye con sus movimientos y se avisa.
+- **Varias empresas en un archivo**: una tabla dinámica con columna "Empresa" se separa por empresa, y en **1 · Fuentes → Empresa a analizar** se elige cuál ver.
+- Dos tablas lado a lado en una hoja (el estado y el detalle de cuentas) se separan aunque la primera columna sea de códigos.
+- Sin fecha de cierre en los archivos, se asume el 31 de diciembre del año anterior a la fecha del archivo y se avisa. Se corrige en **1 · Fuentes → Fecha de cierre**.
+- Costo de ventas por código solo donde el plan de cuentas lo indica: en planes de 6 dígitos, el grupo 41 completo ya no se toma como costo.
+
+**Gráficos**
+
+- Nuevo gráfico **Estructura del balance**: lo que la empresa tiene contra cómo lo financia, con lo de corto plazo arriba y el porcentaje de cada parte. Sirve aunque haya un solo balance.
+- Composición del activo y del financiamiento con **rótulos directos** ("Activo fijo 62%") junto a la última columna.
+- El puente del ingreso a la utilidad suma un paso "Otros de operación" cuando hace falta, para que cada paso conecte con el resultado operacional del estado.
+- El resultado operacional del reporte es el del estado de resultados (antes se recalculaba sin las otras ganancias de la operación).
+
+**Robustez**
+
+- La lectura sigue aunque cambies de pestaña. Antes un PDF largo se detenía y cada página escaneada esperaba 90 segundos.
+
+## Lo que trajo la 2.4
 
 **Comparación entre años**
 

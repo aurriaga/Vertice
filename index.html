@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-c4M4Tu3PMDifZWmxo7Z+iLixLWzd2Q5u8CcvIG9SvJ0=' 'sha256-l9ZoMn3dYN5ycdzMC1GBmPP43KOdC+7MWgnmou02TIc=' 'sha256-mcap54x2xaKeNvxCDzUPY6R6ude4o1a3eL2f8ZS39SE=' 'sha256-RGaAAQ4XtW85HANKHMn+8tnzGNGWbeIU7WsgPmd8xMM=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-c4M4Tu3PMDifZWmxo7Z+iLixLWzd2Q5u8CcvIG9SvJ0=' 'sha256-xt4na1z3dOrwAuPX2E4ZddoGCl6LjoVjV3ar+4ryZpI=' 'sha256-CATdSgAvmXQ7//KcQrsgbr0fFWqmxO2o+ZFGUbRkhpg=' 'sha256-RGaAAQ4XtW85HANKHMn+8tnzGNGWbeIU7WsgPmd8xMM=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; manifest-src 'self'">
 <meta name="referrer" content="no-referrer">
 <script>(function(){try{if(window.top!==window.self&&window.top.location.origin!==location.origin)throw 0;}catch(e){document.documentElement.style.display='none';try{window.top.location=location.href;}catch(e2){}}})();</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -746,9 +746,11 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           <h3 style="font-size:16px;margin-bottom:12px">La empresa</h3>
           <div class="fields">
             <div class="field full"><label for="f-company">Nombre</label><input id="f-company" placeholder="Ej. Comercial Los Andes SpA"></div>
+            <div class="field full" id="f-entity-wrap" hidden><label for="f-entity">Empresa a analizar <span class="muted">(los archivos traen varias)</span></label><select id="f-entity"></select></div>
             <div class="field full"><label for="f-industry">Industria</label><select id="f-industry"></select></div>
             <div class="field"><label for="f-country">País</label><select id="f-country"><option value="CL">Chile</option><option value="OT">Otro país</option></select></div>
             <div class="field"><label for="f-currency">Moneda</label><select id="f-currency"><option>CLP</option><option>USD</option><option>EUR</option><option>UF</option><option>PEN</option><option>COP</option><option>MXN</option><option>ARS</option></select></div>
+            <div class="field full"><label for="f-close">Fecha de cierre de los estados <span class="muted">(solo si los archivos no la traen)</span></label><input id="f-close" type="date"></div>
             <div class="field full"><label for="f-notes">Contexto que explica los números</label><textarea id="f-notes" placeholder="Hechos que el directorio debe conocer: aperturas o cierres de locales, cambios de precio, llegada de un competidor, problemas de abastecimiento…"></textarea></div>
           </div>
           <p class="small muted" style="margin:10px 0 0">El contexto se cita en las causas del reporte. La industria define las referencias del sector y los umbrales de inventario.</p>
@@ -792,7 +794,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="busy" id="busy" hidden><div class="box"><b id="busy-text">Procesando…</b><div class="progress"><i></i></div></div></div>
 
-<script>window.V = window.V || {}; V.CONFIG = {"libBase":"vendor/","pwa":true,"version":"2.4.0"};</script>
+<script>window.V = window.V || {}; V.CONFIG = {"libBase":"vendor/","pwa":true,"version":"2.5.0"};</script>
 <script>
 /* ==== 01_util.js ==== */
 /* Vértice · utilidades: formato es-CL, fechas como número de día UTC, estadística, texto */
@@ -1272,8 +1274,27 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   U.sleep = function (ms) {
     return new Promise((r) => setTimeout(r, ms));
   };
+  // en una pestaña en segundo plano el navegador no dibuja cuadros (requestAnimationFrame se detiene): el respaldo
+  // con un temporizador hace que una lectura larga siga avanzando aunque el usuario cambie de pestaña
   U.nextFrame = function () {
-    return new Promise((r) => (typeof requestAnimationFrame === 'function' ? requestAnimationFrame(() => r()) : setTimeout(r, 0)));
+    return new Promise((r) => {
+      let done = false;
+      const go = () => {
+        if (done) return;
+        done = true;
+        r();
+      };
+      // con la pestaña oculta el navegador también frena los temporizadores (uno por segundo, y uno por minuto después
+      // de un rato): un mensaje entre puertos no se frena
+      if (typeof document !== 'undefined' && document.hidden && typeof MessageChannel === 'function') {
+        const ch = new MessageChannel();
+        ch.port1.onmessage = go;
+        ch.port2.postMessage(0);
+        return;
+      }
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(go);
+      setTimeout(go, typeof requestAnimationFrame === 'function' ? 60 : 0);
+    });
   };
 })(typeof globalThis !== 'undefined' ? (globalThis.V = globalThis.V || {}) : (window.V = window.V || {}));
 
@@ -1550,8 +1571,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       ['educacion', /(educacion|capacitacion|colegio|jardin infantil|academia)/],
       ['turismo', /(hotel|hostal|turismo|agencia de viajes|alojamiento)/],
       ['energia', /(energia|electric|generacion|solar|combustible)/],
+      ['publicidad', /(publicidad|marketing|medios de comunicacion|\bmedios\b|television|radio|radiodifus|canal de tv|broadcast|prensa escrita|periodico|editorial|productora audiovisual)/],
       ['telecom', /(telecomunic|internet|telefonia)/],
-      ['publicidad', /(publicidad|marketing|medios)/],
       ['servicios_profesionales', /(asesor|consultor|contab|auditor|servicios profesionales|abogad|juridic)/],
       ['manufactura', /(fabricacion|manufactur|metalmecan|industrial)/],
       ['distribucion', /(al por mayor|mayorista|distribuidora|importadora|comercializadora)/],
@@ -1777,6 +1798,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       notes: [],
       blobs: [],
       addedAt: Date.now(),
+      // fecha del archivo: sirve de referencia cuando unos estados no traen su fecha de cierre
+      fileDate: typeof file.lastModified === 'number' && file.lastModified > 0 ? file.lastModified : null,
     };
   }
   function trimGrid(grid) {
@@ -1873,16 +1896,26 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const rows = grid.filter((r) => r && r.filter(filled).length >= 2);
     if (rows.length < 4) return [grid];
     const isText = (v) => typeof v === 'string' && /[A-Za-zÁÉÍÓÚÑáéíóúñ]{3}/.test(v);
+    const isNum = (v) => typeof v === 'number' || (typeof v === 'string' && /^\(?[-−]?\$?\s?\d[\d.,\s]*\)?%?$/.test(v.trim()));
+    // columna de nombres de un bloque: la primera o la segunda (la primera puede ser de códigos de cuenta: "111101")
+    const labelCol = (from, to) => {
+      for (let k = from; k < Math.min(to, from + 2); k++) {
+        const vs = rows.map((r) => r[k]).filter(filled);
+        if (vs.length >= 3 && vs.filter(isText).length / vs.length >= 0.6) return k;
+      }
+      return -1;
+    };
     for (let c = 1; c < W - 2; c++) {
       const empty = rows.filter((r) => !filled(r[c])).length / rows.length;
       if (empty < 0.97) continue;
       const left = rows.filter((r) => r.slice(0, c).some(filled)).length / rows.length;
       const right = rows.filter((r) => r.slice(c + 1).some(filled)).length / rows.length;
       if (left < 0.4 || right < 0.4) continue;
-      const lc = rows.map((r) => r[0]).filter(filled);
-      const rc = rows.map((r) => r[c + 1]).filter(filled);
-      if (!rc.length || rc.filter(isText).length / rc.length < 0.6 || lc.filter(isText).length / Math.max(1, lc.length) < 0.6) continue;
-      if (!rows.some((r) => r.slice(c + 2).some((v) => typeof v === 'number'))) continue;
+      const lk = labelCol(0, c);
+      const rk = labelCol(c + 1, W);
+      if (lk < 0 || rk < 0) continue;
+      // cada bloque tiene sus propios montos a la derecha de sus nombres
+      if (!rows.some((r) => r.slice(rk + 1).some(isNum)) || !rows.some((r) => r.slice(lk + 1, c).some(isNum))) continue;
       const firstRight = grid.findIndex((r) => r && r.slice(c + 1).some(filled));
       const titles = grid.slice(0, Math.max(0, firstRight)).filter((r) => r && r.some(filled));
       const leftG = grid.map((r) => (r || []).slice(0, c));
@@ -1890,6 +1923,44 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       return [trimGrid(leftG)].concat(L.splitBlocks(trimGrid(rightG)));
     }
     return [grid];
+  };
+
+  /* una tabla con varias empresas (columna "Empresa" de una tabla dinámica, llena solo en la primera fila de cada
+     grupo, o repetida en cada fila) se separa en una tabla por empresa: mezclar sus cuentas daría un balance que no
+     existe. Cada parte lleva el nombre de su empresa como título y en meta.entity. */
+  L.splitEntities = function (raw) {
+    const g = (raw && raw.grid) || [];
+    if (g.length < 6 || !V.S || !V.S.detectHeader || (raw.meta && raw.meta.entity)) return [raw];
+    const hr = V.S.detectHeader(g);
+    if (hr < 0) return [raw];
+    const head = g[hr] || [];
+    const ec = head.findIndex((h) => typeof h === 'string' && /^(empresa|empresas|sociedad|raz[oó]n social|compa[nñ][ií]a|entidad|filial|unidad de negocio)$/i.test(h.trim()));
+    // solo tablas contables (cuentas, debe, haber, saldos): en una tabla de ventas "Empresa" suele ser el cliente
+    if (ec < 0 || !head.some((h) => typeof h === 'string' && /cuenta|debe|haber|saldo|activo|pasivo|c[oó]digo/i.test(h))) return [raw];
+    const names = [];
+    const groups = new Map();
+    let cur = null;
+    g.slice(hr + 1).forEach((r) => {
+      const v = r && r[ec];
+      const s = typeof v === 'string' ? v.trim() : '';
+      // "Total general" o "Total Empresa X" de la tabla dinámica: no es una fila de ninguna empresa
+      if (/^total\b/i.test(s)) return;
+      if (s) cur = s;
+      if (!cur || !r || !r.some((x, i) => i !== ec && x !== null && x !== '')) return;
+      if (!groups.has(cur)) {
+        groups.set(cur, []);
+        names.push(cur);
+      }
+      groups.get(cur).push(r);
+    });
+    if (names.length < 2 || names.length > 40 || names.some((n) => groups.get(n).length < 2)) return [raw];
+    const drop = (r) => (r || []).filter((_, i) => i !== ec);
+    const titles = g.slice(0, hr).map(drop);
+    return names.map((nm) => ({
+      name: raw.name + ' · ' + nm,
+      grid: trimGrid(titles.concat([[nm]], [drop(head)], groups.get(nm).map(drop))),
+      meta: Object.assign({}, raw.meta || {}, { entity: nm, merges: {} }),
+    }));
   };
 
   /* ---------- CSV / TXT ---------- */
@@ -2168,6 +2239,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const maxPages = Math.min(doc.numPages, 300);
     let textChars = 0;
     let pageTables = [];
+    const pageHeads = new Map();
     const imagePages = [];
     const failedPages = [];
     for (let p = 1; p <= maxPages; p++) {
@@ -2190,7 +2262,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (chars >= 40 && !garbled) scan = await withTimeout(L.pageScanInfo(page, pdfjsLib), 20000).catch(() => null);
       if (chars < 40 || garbled || (scan && scan.cover >= 0.3 && scan.invisible)) imagePages.push({ p, chars, garbled: garbled || !!(scan && scan.invisible), ocrLayer: !!(scan && scan.invisible) });
       const res = L.pdfItemsToTables(items);
-      res.tables.forEach((t, i) => pageTables.push({ page: p, idx: i, grid: t.grid, title: t.title, notes: t.notes || [] }));
+      pageHeads.set(p, res.head || []);
+      res.tables.forEach((t, i) => pageTables.push({ page: p, idx: i, grid: t.grid, title: t.title, notes: t.notes || [], head: res.head || [] }));
       if (res.text) src.texts.push({ where: 'Página ' + p, text: res.text.slice(0, 6000) });
       } catch (e) {
         console.error('página ' + p, e);
@@ -2255,7 +2328,12 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       src.notes.push({ level: 'info', text: 'Carpeta tributaria: se leyeron ' + F29.rows.length + ' formulario(s) 29 (' + F29.fromLabel + (F29.rows.length > 1 ? ' a ' + F29.toLabel : '') + ') y se juntaron en una tabla de ventas mensuales declaradas al SII (ventas = débito fiscal ÷ 0,19 + exportaciones + exentas), con IVA, remanente, PPM y retenciones.' + (F29.f22 ? ' Las páginas del formulario 22 (renta anual) quedan como contexto.' : '') });
     }
     // una tabla que sigue en varias páginas se llama "Páginas 3–8" (no solo por la última)
-    merged.forEach((t) => src.tables.push({ name: (t.firstPage && t.firstPage !== t.page ? 'Páginas ' + t.firstPage + '–' + t.page : 'Página ' + t.page) + (t.idx ? ' · tabla ' + (t.idx + 1) : ''), grid: trimGrid(t.grid), meta: { page: t.page, firstPage: t.firstPage || t.page, origin: 'pdf', title: t.title, notes: t.notes || [] } }));
+    merged.forEach((t) => src.tables.push({ name: (t.firstPage && t.firstPage !== t.page ? 'Páginas ' + t.firstPage + '–' + t.page : 'Página ' + t.page) + (t.idx ? ' · tabla ' + (t.idx + 1) : ''), grid: trimGrid(t.grid), meta: { page: t.page, firstPage: t.firstPage || t.page, origin: 'pdf', title: t.title, notes: t.notes || [], pageHead: t.head && t.head.length ? t.head.slice(0, 8) : undefined } }));
+    // la línea que encabeza casi todas las páginas es el nombre de la empresa ("TELEVISION NACIONAL DE CHILE")
+    if (!src.company) {
+      const dc = L.docCompany(pageHeads, src.texts);
+      if (dc) src.company = dc;
+    }
     // páginas escaneadas: reconocimiento de texto (OCR) en el propio equipo
     if (imagePages.length) {
       const ocr = await L.ocrPages(doc, imagePages, src, file.name, window.pdfjsLib);
@@ -2286,6 +2364,60 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       src.notes.push({ level: 'info', text: 'No se detectaron tablas en el PDF; su texto se usará como contexto. Si tiene tablas complejas, usa "Extraer con IA".' });
     }
     return src;
+  };
+  /* empresa de un documento: la línea que se repite al inicio de la mayoría de las páginas (no un título de estado,
+     de índice o de notas). Devuelve { name, rut, giro, fromHeader } o null */
+  L.docCompany = function (pageHeads, texts) {
+    const GENERIC = /^(estados?|balance|notas?\b|indice|contenido|informe|analisis|memoria|pagina|pag\b|al \d|por (el|los)|en (miles|millones)|\(en|cifras|expresad|correspondientes|intermedios?|consolidad|individual|resumen|anexo|declaracion|carpeta|formulario)/;
+    const counts = new Map();
+    let pages = 0;
+    pageHeads.forEach((head) => {
+      if (!head || !head.length) return;
+      pages++;
+      const seen = new Set();
+      head.slice(0, 2).forEach((l) => {
+        const s = String(l).replace(/\s+/g, ' ').trim();
+        const n = U.norm(s);
+        if (seen.has(n) || s.length < 4 || s.length > 90 || GENERIC.test(n) || /\d{2,}/.test(n.replace(/\b\d{1,2}\.\d{3}\.\d{3}\s?-\s?[\dk]\b/, '')) || !/[a-z]{3}/.test(n)) return;
+        // una oración de una nota (con verbo y punto final) no es un nombre
+        if (s.split(/\s+/).length > 9 || /[.:;]$/.test(s)) return;
+        seen.add(n);
+        const o = counts.get(n) || { s, n: 0 };
+        o.n++;
+        // entre "TELEVISION NACIONAL DE CHILE" y "Televisión Nacional de Chile" se prefiere la escrita con tildes y minúsculas
+        const score = (x) => (/[a-záéíóúñ]/.test(x) ? 2 : 0) + (/[áéíóúñÁÉÍÓÚÑ]/.test(x) ? 1 : 0);
+        if (score(s) > score(o.s)) o.s = s;
+        counts.set(n, o);
+      });
+    });
+    const ranked = Array.from(counts.values()).sort((a, b) => b.n - a.n);
+    const best = ranked[0];
+    const second = ranked[1] ? ranked[1].n : 0;
+    // en la mayoría de las páginas, o al menos en las de los estados (las notas no siempre repiten el encabezado)
+    if (pages < 3 || !best || best.n < 3 || (best.n < pages * 0.4 && !(best.n >= 5 && best.n >= second * 3))) {
+      // sin encabezado repetido (el logo es una imagen): la mención más frecuente de "X S.A. y subsidiarias" en el texto
+      const txt = (texts || []).map((x) => x.text || '').join('\n');
+      const re = /\b([A-ZÁÉÍÓÚÑ][\wÁÉÍÓÚÑáéíóúñ&.\-]*(?:\s+(?:de\s+|del\s+)?[A-ZÁÉÍÓÚÑ&][\wÁÉÍÓÚÑáéíóúñ&.\-]*){0,5}\s+(?:S\.\s?A\.|SpA|S\.p\.A\.|Ltda\.?))\s+y\s+(?:sus\s+)?(?:subsidiarias|filiales|afiliadas|sociedades dependientes)/g;
+      const mc = new Map();
+      let m;
+      while ((m = re.exec(txt))) {
+        const k = U.norm(m[1]);
+        const o = mc.get(k) || { s: m[1], n: 0 };
+        o.n++;
+        mc.set(k, o);
+      }
+      const bt = Array.from(mc.values()).sort((a, b) => b.n - a.n)[0];
+      return bt && bt.n >= 3 ? { name: bt.s.replace(/\s+/g, ' '), rut: null, giro: null, fromHeader: true } : null;
+    }
+    let rut = null;
+    pageHeads.forEach((head) => {
+      if (rut || !head) return;
+      const m = head.join(' ').match(/\b(\d{1,2}\.?\d{3}\.?\d{3})\s?-\s?([\dkK])\b/);
+      if (m) rut = m[1].replace(/\./g, '').replace(/\B(?=(\d{3})+(?!\d))/g, '.') + '-' + m[2].toUpperCase();
+    });
+    // "Banco de Chile S.A. y Sus Filiales" → el nombre de la empresa, sin el alcance de la consolidación
+    const name = best.s.replace(/\s*[-–|]\s*$/, '').replace(/\s+y\s+(sus\s+)?(filiales|subsidiarias|afiliadas|sociedades dependientes)\b.*$/i, '').replace(/\s*\((consolidado|individual)\)\s*$/i, '');
+    return { name, rut, giro: null, fromHeader: true };
   };
   function headerRowOf(grid) {
     return grid.find((r) => r.filter((v) => v !== null && v !== '').length >= 2) || [];
@@ -2419,7 +2551,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const ctx = c.getContext('2d', { willReadFrequently: true });
     ctx.fillStyle = '#fff';
     ctx.fillRect(0, 0, c.width, c.height);
-    await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    // modo impresión: pdf.js no espera cuadros de pantalla, así que la página se dibuja aunque la pestaña esté oculta
+    await page.render({ canvasContext: ctx, viewport: vp, intent: 'print' }).promise;
     return ctx.getImageData(0, 0, c.width, c.height);
   };
   /* OCR de una imagen RGBA → tablas crudas agregadas a la fuente */
@@ -2661,6 +2794,15 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const txt = ln.cells.map((c) => c.s).join(' ');
       if (ln.cells.length >= 2 && /(p[aá]g(ina)?\.?\s*:?\s*\d+|hora\s*:?\s*\d{1,2}:\d{2}|fecha\s*(de\s+emisi[oó]n)?\s*:?\s*\d{1,2}[\/.\-]\d{1,2}[\/.\-]\d{2,4}|\b(rut|r\.u\.t\.?|giro|direcci[oó]n|domicilio|raz[oó]n social|empresa|representante legal|comuna|ciudad|moneda)\s*:)/i.test(txt) && !/\d{1,3}(\.\d{3}){2,}(?!-)/.test(txt.replace(/\b\d{1,2}\.\d{3}\.\d{3}\s?-\s?[\dkK]\b/g, ''))) ln.cells = [{ s: txt, x0: ln.cells[0].x0, x1: ln.cells[ln.cells.length - 1].x1 }];
     });
+    // encabezado de la página: las líneas de una sola celda antes de la primera fila con columnas ("TELEVISION
+    // NACIONAL DE CHILE" / "Estados de situación financiera intermedios" / "Al 31 de marzo de 2026…" / "(En miles de
+    // pesos M$)"). Trae la empresa, el estado, la fecha y la unidad de todas las tablas de la página.
+    const head = [];
+    for (const ln of lines) {
+      if (ln.cells.length >= 2 || head.length >= 8) break;
+      const s = ln.cells[0] ? ln.cells[0].s : '';
+      if (s && s.length <= 160) head.push(s);
+    }
     // regiones de tabla: líneas consecutivas con 2+ celdas
     const tables = [];
     const textLines = [];
@@ -2713,7 +2855,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       }
       i++;
     }
-    return { tables, text: textLines.join('\n') };
+    return { tables, text: textLines.join('\n'), head };
   };
   /* nombres de partida partidos en dos líneas ("Activos financieros … con cambios en" / "resultados  3.120.400"):
      la línea que sigue empieza con minúscula y completa el nombre; se unen en una sola fila */
@@ -3973,6 +4115,18 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const t = U.norm(raw);
     const yM = t.match(/\b(19|20)\d{2}\b/);
     let m;
+    // dos fechas en el encabezado ("01/01/2026 31/03/2026", "01-01-2025 al 31-12-2025"): desde el inicio hasta el cierre
+    const dts = Array.from(t.matchAll(/\b(\d{1,2})[.\/\-](\d{1,2})[.\/\-]((?:19|20)\d{2})\b/g));
+    if (dts.length >= 2) {
+      const a = dts[0];
+      const b = dts[dts.length - 1];
+      if (+a[2] >= 1 && +a[2] <= 12 && +b[2] >= 1 && +b[2] <= 12 && +a[1] <= 2) {
+        const from = U.dayFromYMD(+a[3], +a[2], 1);
+        const to = U.dayFromYMD(+b[3], +b[2], +b[1]);
+        const months = U.monthsBetween(U.monthKeyYM(+a[3], +a[2]), U.monthKeyYM(+b[3], +b[2])) + 1;
+        if (to > from && months >= 1 && months <= 12) return { from, to, months, y: +b[3], m0: +a[2], m1: +b[2], kind: 'range', key: U.monthKeyYM(+b[3], +b[2]) };
+      }
+    }
     // fecha de cierre
     if ((m = t.match(/\b(\d{1,2})[.\/\-](\d{1,2})[.\/\-]((?:19|20)\d{2})\b/))) {
       const y = +m[3];
@@ -4019,6 +4173,42 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (mo) return { to: monthEnd(mo), from: U.dayFromYMD(y, mo, 1), months: 1, y, m0: mo, m1: mo, kind: 'month', key: U.monthKeyYM(y, mo) };
     }
     return { to: monthEnd(12), from: U.dayFromYMD(y, 1, 1), months: 12, y, m0: 1, m1: 12, kind: 'year', key: U.monthKeyYM(y, 12), loose: true };
+  };
+
+  /* fechas de cierre de un título, en orden: "al 31 de marzo de 2026 y al 31 de diciembre de 2025" → [31-03-2026,
+     31-12-2025]; "al 31 de diciembre de 2025 y 2024" → [31-12-2025, 31-12-2024] (el año suelto toma el día y el mes
+     de la fecha anterior); "2025 y 2024" → los 31 de diciembre */
+  S.closingDates = function (text) {
+    const t = U.norm(text || '');
+    const re = /\b(\d{1,2})\s+de\s+([a-z]{3,10})\.?\s+(?:de(?:l)?\s+)?((?:19|20)\d{2})\b|\b(\d{1,2})[.\/\-](\d{1,2})[.\/\-]((?:19|20)\d{2})\b|\b((?:19|20)\d{2})\b/g;
+    const out = [];
+    let last = null;
+    let m;
+    while ((m = re.exec(t))) {
+      let d;
+      let mo;
+      let y;
+      if (m[1]) {
+        d = +m[1];
+        mo = monOf(m[2]);
+        y = +m[3];
+        if (!mo) continue;
+        last = { d, mo };
+      } else if (m[4]) {
+        d = +m[4];
+        mo = +m[5];
+        y = +m[6];
+        if (mo < 1 || mo > 12) continue;
+        last = { d, mo };
+      } else {
+        y = +m[7];
+        d = last ? last.d : 31;
+        mo = last ? last.mo : 12;
+      }
+      const day = U.dayFromYMD(y, mo, Math.min(d, U.ymd(U.monthEnd(U.monthKeyYM(y, mo)))[2]));
+      if (!out.includes(day)) out.push(day);
+    }
+    return out;
   };
 
   /* encabezado que representa un período (para tablas "anchas") */
@@ -4129,6 +4319,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     ['deudores por exportacion', 'ar'], ['deudores por ventas', 'ar'], ['documentos por cobrar', 'ar'], ['deudores varios', 'oca'],
     ['cotizaciones previsionales', 'payroll'], ['imposiciones por pagar', 'payroll'], ['retenciones previsionales', 'payroll'], ['provision de vacaciones', 'payroll'], ['vacaciones por pagar', 'payroll'],
     ['ventas del giro', 'rev'], ['ventas de exportacion', 'rev'],
+    // formato de la CMF para sociedades de servicios financieros (no bancos): las comisiones son su venta y lo que pagan
+    // por comisiones, su costo
+    ['ingresos por comisiones', 'rev'], ['ingresos por comisiones y servicios', 'rev'], ['gastos por comisiones', 'cogs'], ['gastos por comisiones y servicios', 'cogs'],
+    ['gastos por obligaciones de beneficios a los empleados', 'payrollExp'], ['gastos del personal', 'payrollExp'],
   ];
   const INC_KEYS = new Set(['rev', 'cogs', 'gp', 'sga', 'dist', 'sgv', 'ebit', 'int', 'ebt', 'tax', 'dep', 'amort', 'othinc', 'othexp', 'fx', 'fees', 'payrollExp', 'rent']);
   const BAL_ONLY = new Set(['cash', 'ar', 'inv', 'ca', 'ppe', 'nca', 'ta', 'ap', 'stdebt', 'cl', 'ltdebt', 'ncl', 'tl', 'eq', 'tle', 'cap', 're', 'taxrec', 'taxliab', 'payroll', 'relA', 'related', 'relX', 'ocl', 'oca', 'susp']);
@@ -4156,11 +4350,28 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     return k;
   };
   S.fsKey = function (label) {
-    const n = U.norm(label).replace(/[()]/g, ' ').replace(/\s+/g, ' ').trim();
+    // "Total de patrimonio y pasivos", "Total de los activos": el mismo total que "Total patrimonio y pasivos"; las comas
+    // no cambian la partida ("Otros pasivos financieros, no corrientes")
+    const n = U.norm(label).replace(/[(),]/g, ' ').replace(/\s+/g, ' ').trim().replace(/^total de (los |las )?/, 'total ');
+    // deuda financiera: corriente o no corriente según lo diga el rótulo (antes la coma hacía que la de largo plazo se
+    // leyera como de corto plazo)
+    if (/^(otros )?(pasivos financieros|prestamos (bancarios|que devengan intereses)|obligaciones con (bancos|el publico|instituciones financieras)|bonos|deuda financiera)\b/.test(n) && !/^total/.test(n)) {
+      if (/\bno corrientes?\b|largo plazo/.test(n)) return 'ltdebt';
+      if (/\bcorrientes?\b|corto plazo/.test(n)) return 'stdebt';
+    }
     // etiquetas cortas y exactas de ingresos
     if (/^(ventas|ingresos|ventas totales|ingresos totales)$/.test(n)) return 'rev';
     // "Resultado del período antes de impuesto a la renta": es el resultado antes de impuestos, aunque diga "del período"
     if (/\bantes de(l)? (los )?impuestos?\b/.test(n) && !/^(impuesto|gasto por impuesto)/.test(n)) return 'ebt';
+    // formatos IFRS con "(pérdida)" en el rótulo: "Ganancia (pérdida) bruta" es el margen bruto, no el resultado;
+    // "Pérdidas de actividades operacionales" es el resultado operacional; "Pérdida del ejercicio", el resultado
+    if (/^(ganancias?|utilidad(es)?|perdidas?|margen|resultado)( (perdidas?|ganancias?))? brut[ao]s?\b/.test(n)) return 'gp';
+    if (/^(ganancias?|utilidad(es)?|perdidas?|resultados?)( (perdidas?|ganancias?))? (de|por|en) (las )?actividades (operacionales|de (la )?operacion)\b/.test(n)) return 'ebit';
+    if (/^(ganancias?|utilidad(es)?|perdidas?|resultados?)( (perdidas?|ganancias?))?( neta)? del? (ejercicio|periodo)\b/.test(n) && !/integral/.test(n)) return 'ni';
+    // la depreciación acumulada es un saldo del balance (resta al activo fijo), no el gasto del período
+    if (/(depreciacion|amortizacion|deterioro)(es)? acumulad/.test(n)) return null;
+    // "Utilidad neta retenida", "Pérdidas acumuladas": resultados de años anteriores (patrimonio), no el del año
+    if (/^(utilidad(es)?|ganancias?|perdidas?|resultados?)( (netas?|perdidas?|ganancias?))? (retenid|acumulad|de ejercicios anteriores|anteriores)/.test(n)) return 're';
     // cuentas de control sin cuadrar ("Traspasos por conciliar", "Fondos por rendir", "Giros sin rendición"):
     // no son caja ni clientes; un auditor las revisa una por una
     if (/por conciliar|en transito|por rendir|sin rendicion|sin rendir|por aclarar|por identificar|por clasificar|diferencias? de conciliacion|cuenta puente|cuenta transitoria|partidas pendientes/.test(n) && !/^(total|ajuste|gasto)/.test(n)) return 'susp';
@@ -4171,8 +4382,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     if (/factoring|leasing financiero|arrendamiento financiero|confirming/.test(n) && !/ingreso|gasto|interes/.test(n)) return 'stdebt';
     let best = null;
     let bl = 0;
-    for (const [k, v] of S.FS_KEYS) {
-      if (n === k || n.startsWith(k + ' ') || n.startsWith(k + ',') || n.indexOf(k) >= 0) {
+    for (const [k0, v] of S.FS_KEYS) {
+      const k = k0.indexOf(',') >= 0 ? k0.replace(/,/g, ' ').replace(/\s+/g, ' ') : k0;
+      if (n === k || n.startsWith(k + ' ') || n.indexOf(k) >= 0) {
         // preferir la coincidencia más larga y exacta al inicio
         const score = k.length + (n.startsWith(k) ? 100 : 0) + (n === k ? 200 : 0);
         if (score > bl) {
@@ -4209,11 +4421,15 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   };
 
   /* ---------- detección de encabezado ---------- */
+  /* "-", "–" o "—" en un estado financiero significa cero o sin saldo: no es texto ni cuenta para decidir el tipo */
+  const NIL_RE = /^[-–—−]{1,3}$/;
+  S.isNil = (v) => typeof v === 'string' && NIL_RE.test(v.trim());
   function cellKind(v) {
     if (v === null || v === undefined || v === '') return 'empty';
     if (typeof v === 'number') return Number.isInteger(v) && v >= 1990 && v <= 2100 ? 'year' : 'num';
     if (typeof v === 'object') return v.d !== undefined ? 'date' : 'empty';
     const s = String(v).trim();
+    if (NIL_RE.test(s)) return 'empty';
     if (/^(19|20)\d{2}$/.test(s)) return 'year';
     if (S.isNumLike(s)) return 'num';
     if (S.parseDateStr(s)) return 'date';
@@ -4289,7 +4505,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   /* ---------- perfil de columna ---------- */
   S.profileColumn = function (values, header, opts) {
     opts = opts || {};
-    const nonEmpty = values.filter((v) => v !== null && v !== undefined && v !== '');
+    // los guiones de un estado financiero ("Inventarios | - | 158.626") son ceros: no cuentan como texto
+    const nonEmpty = values.filter((v) => v !== null && v !== undefined && v !== '' && !S.isNil(v));
     const n = nonEmpty.length;
     const p = { n, total: values.length, kind: 'empty', grain: null, fmt: null, order: 'dmy', unique: 0, samples: [] };
     if (!n) return p;
@@ -4405,6 +4622,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       meta: raw.meta || {},
       enabled: true,
       notes: [],
+      fileDate: source.fileDate || null,
     };
     let hr = S.detectHeader(grid);
     if (hr < 0) {
@@ -4452,21 +4670,38 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           return carry && h ? carry + ' ' + h : h || carry;
         });
       } else if (dupCount > 0 && prev.some(filled)) {
+        // filas de encabezado apiladas sobre la fila de unidades ("31/03/2026 | 31/03/2025 | Variación | Variación"
+        // sobre "MM$ | MM$ | MM$ | %"): cada columna toma lo que tiene encima; solo una columna sin nada encima hereda el
+        // rótulo de su vecina de la izquierda (un título de grupo centrado sobre varias columnas). Antes, "Variación"
+        // heredaba la fecha de la columna anterior y se leía como un período más.
+        const above = [];
+        for (let k = hr - 1; k >= 0 && above.length < 3; k--) {
+          const r = grid[k] || [];
+          if (!r.some(filled) || r.some((v, i) => i > 0 && cellKind(v) === 'num')) break;
+          above.unshift(r);
+        }
         let carry = '';
         headers = headers.map((h, i) => {
-          if (filled(prev[i])) carry = cellTxt(prev[i]);
-          return carry && h ? carry + ' ' + h : h || carry;
+          const own = above.map((r) => r[i]).filter(filled).map(cellTxt);
+          let lab = '';
+          if (own.length) lab = carry = own.join(' ');
+          else if (i > 0) lab = carry;
+          return lab && h ? lab + ' ' + h : h || lab;
         });
       }
       // encabezado en dos líneas: la fila siguiente solo trae años o la unidad bajo las columnas del encabezado
       // ("Al 30 de junio de" / "2026", "2026" / "MM$")
+      // (también la fecha de cierre bajo la de inicio: "01/01/2026 al" / "30/06/2026" / "M$", hasta dos líneas)
       let hSkip = 0;
-      const nx = grid[hr + 1] || [];
-      const nxCells = nx.map((v, i) => [i, v]).filter((x) => filled(x[1]));
       const unitRe = /^(m{1,2}\$|\$|miles de \$|millones de \$|us\$|usd|clp|uf|miles de pesos|millones de pesos)$/i;
-      if (nxCells.length && nxCells.every(([i, v]) => i > 0 && headers[i] && (typeof v === 'number' ? v >= 1990 && v <= 2100 && Number.isInteger(v) : /^(19|20)\d{2}$/.test(String(v).trim()) || unitRe.test(String(v).trim())))) {
-        nxCells.forEach(([i, v]) => (headers[i] = headers[i] + ' ' + String(v).trim()));
-        hSkip = 1;
+      const dateRe = /^\d{1,2}[.\/\-]\d{1,2}[.\/\-](19|20)\d{2}$/;
+      for (let k = 1; k <= 2; k++) {
+        const nx = grid[hr + k] || [];
+        const nxCells = nx.map((v, i) => [i, v]).filter((x) => filled(x[1]));
+        const ok = nxCells.length && nxCells.every(([i, v]) => i > 0 && headers[i] && (typeof v === 'number' ? v >= 1990 && v <= 2100 && Number.isInteger(v) : typeof v === 'object' ? v.d !== undefined : /^(19|20)\d{2}$/.test(String(v).trim()) || unitRe.test(String(v).trim()) || dateRe.test(String(v).trim())));
+        if (!ok) break;
+        nxCells.forEach(([i, v]) => (headers[i] = headers[i] + ' ' + (typeof v === 'object' ? U.fmtDate(v.d) : String(v).trim())));
+        hSkip = k;
       }
       // nombres vacíos o repetidos
       const seen = {};
@@ -4496,6 +4731,12 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const ctx = [t.titleLines.join(' '), raw.meta && raw.meta.title, raw.meta && raw.meta.sheet, raw.name, source.name].filter(Boolean).join(' · ');
     t.context = ctx;
     t.hints = S.hintsFrom(ctx);
+    // la unidad suele estar solo en el encabezado de la página ("(En miles de pesos M$)"), no junto a la tabla
+    const ph = raw.meta && Array.isArray(raw.meta.pageHead) ? S.hintsFrom(raw.meta.pageHead.join(' ')) : null;
+    if (ph) {
+      if (!t.hints.scale && ph.scale) t.hints.scale = ph.scale;
+      if (!t.hints.currency && ph.currency) t.hints.currency = ph.currency;
+    }
     t.headerHints = t.headers.map((h) => S.hintsFrom(h));
     t.profiles = t.headers.map((h, c) =>
       S.profileColumn(
@@ -4574,8 +4815,31 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     let ratioHits = 0;
     if (labelCol >= 0) t.rows.forEach((r) => typeof r[labelCol] === 'string' && /(raz[oó]n(?!able)|ratio|rotaci[oó]n|endeudamiento|liquidez|apalancamiento|\broa\b|\broe\b|prueba [aá]cida|cobertura(?! contable)|d[ií]as de|margen .*%|\(%\)|indicador)/i.test(r[labelCol]) && ratioHits++);
     // balance de 8 columnas (balance tributario): debe, haber, deudor, acreedor, activo, pasivo, pérdida y ganancia
+    let trialBal = false;
     if (V.ACC && V.ACC.looksLike(t.headers)) scores.balance8 += 8;
     else if (V.ACC && V.ACC.headerInfo(t.headers).n8 >= 3 && /balance (general|tributario|de (8|ocho) columnas|de comprobaci)/.test(ctx)) scores.balance8 += 6;
+    else if (V.ACC && !scores.diario && t.rows.length >= 8) {
+      // balance de comprobación de sumas ("111101 - Caja | Debe | Haber", o una tabla dinámica con "Suma de DEBE"):
+      // cuentas con código, debe y haber, sin fecha ni glosa. Es un balance (activos, pasivos y resultados), no un
+      // listado de gastos ni un estado ya armado
+      // debe y haber en columnas propias (un encabezado "(Cargo)/Abono" de una nota no es un balance)
+      const c8 = V.ACC.headerInfo(t.headers).cols;
+      const own = (r) => c8.some((x) => x.length === 1 && x[0] === r);
+      if (own('debe') && own('haber') && !prof.some((p) => p.kind === 'date') && !hn.some((h) => /asiento|comprobante|glosa|fecha|n[°º]? ?doc/.test(h))) {
+        const codeLike = (v) => {
+          const s = String(v === null || v === undefined ? '' : v).trim();
+          return /^\d[\d.\-]{2,}(\s*[-–:|]?\s*[A-Za-zÁÉÍÓÚÑáéíóúñ].*)?$/.test(s) && (s.match(/\d/g) || []).length >= 3;
+        };
+        const hasCodes = t.headers.some((_, c) => {
+          const vs = t.rows.map((r) => r[c]).filter((v) => v !== null && v !== '');
+          return vs.length >= 8 && vs.filter(codeLike).length / vs.length >= 0.7;
+        });
+        if (hasCodes) {
+          scores.balance8 += 12;
+          trialBal = true;
+        }
+      }
+    }
     if (fsHits >= 4) scores.estados += 3 + fsHits * 0.3;
     if (/estado de resultado|estado de situacion|balance general|balance clasificado|eeff|estados financieros|situacion financiera|flujo de efectivo/.test(ctx + ' ' + all)) scores.estados += 2;
     if (!numCols) scores.estados = 0;
@@ -4621,6 +4885,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const nRows = t.rows.length;
     if (scores.ventas > 0 && nRows <= 60 && !hn.some((h) => /producto|sku|articulo/.test(h)) && prof.some((p) => p.kind === 'date' && p.grain === 'month')) scores.resumen += scores.ventas * 0.6;
     if (periodCols.length >= 3 && scores.presupuesto === 0 && scores.gastos === 0 && scores.ventas === 0) scores.otro += 0.5;
+    if (trialBal) {
+      scores.estados = 0;
+      scores.gastos = 0;
+    }
     let type = Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
     if (scores[type] < 1) type = 'otro';
     t.typeScores = scores;
@@ -4685,6 +4953,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const lc = prof.findIndex((p) => p.kind === 'text');
       if (lc >= 0) mapping[lc] = 'etiqueta';
       t.headers.forEach((h, c) => {
+        // el código de cuenta ("111101") y el número de nota ("6") son números, pero no montos
+        if (/^(codigo|cod\.?|n[°º]? ?(de )?cuenta|cuenta|nota|notas|n[°º])$/.test(U.norm(h).trim())) return;
         if (c !== lc && (prof[c].kind === 'num' || prof[c].kind === 'pct')) mapping[c] = 'valor';
       });
       return mapping;
@@ -4794,6 +5064,27 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     return mapping;
   };
 
+  /* revisión de un documento completo: en unos estados financieros (PDF o Word), las tablas chicas que parecen ventas,
+     gastos o presupuesto son notas al pie (deudores por antigüedad, flujos de inversión, dietas del directorio,
+     ingresos financieros). Quedan como contexto: sumarlas como ventas o gastos inventaba cifras ("vendió $ 1.297 MM"
+     cuando el estado de resultados dice $ 10.801 MM). Devuelve cuántas tablas cambiaron. */
+  S.reviewSource = function (src, tables) {
+    if (!/^(pdf|word|html)$/.test((src && src.kind) || '') || !tables || !tables.length) return 0;
+    const formal = tables.filter((t) => t.type === 'estados' && t.typeScores && (t.typeScores.estados || 0) >= 4);
+    if (formal.length < 2) return 0;
+    let n = 0;
+    tables.forEach((t) => {
+      if (!['ventas', 'gastos', 'presupuesto', 'resumen', 'inventario', 'competencia'].includes(t.type)) return;
+      if (t.rows.length > 120 || t.rcv || t.f29) return;
+      S.setType(t, 'otro');
+      t.notes.push('Parece una nota de los estados financieros: queda como contexto y no se suma como detalle de ventas, gastos ni presupuesto.');
+      t.autoNote = true;
+      n++;
+    });
+    if (n) src.notes.push({ level: 'info', text: n + ' tabla(s) de notas a los estados financieros quedaron como contexto (no se suman como ventas, gastos ni presupuesto). Si alguna sí lo es, cámbiala en el paso 2.' });
+    return n;
+  };
+
   /* aplica un cambio manual del usuario y lo recuerda */
   S.setRole = function (t, c, role) {
     for (let i = 0; i < t.mapping.length; i++) if (i !== c && role && t.mapping[i] === role && role !== 'valor') t.mapping[i] = null;
@@ -4848,6 +5139,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const cols = headers.map((h) => {
       const n = clean(h);
       if (!n || /^columna \d+$/.test(n)) return [];
+      // "Saldo (Debe − Haber)" es el saldo, no dos columnas fundidas; el saldo se recalcula con el debe y el haber
+      if (/^saldo\b/.test(n) && !/^saldos? (deudor|acreedor)/.test(n)) return [];
       const found = [];
       for (const [role, re] of HEAD) {
         if (role === 'code' || role === 'name') {
@@ -5015,6 +5308,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   /* aprende del propio documento qué grupos del plan son patrimonio, activo fijo, etc. */
   ACC.learnChart = function (accs) {
     const byPfx = new Map();
+    // grupos de costo de ventas del plan (tres dígitos: "411" si ahí están "Costo de venta" y "Otros costos de
+    // ventas"); en planes de 6 dígitos el "41" completo también trae remuneraciones y gastos de administración
+    const cogs3 = new Set();
+    for (const a of accs) if (a.side === 'res' && RULES.cogs.test(U.norm(a.name || '')) && ACC.digits(a.code).length >= 5) cogs3.add(ACC.digits(a.code).slice(0, 3));
     for (const a of accs) {
       if (a.side !== 'bal') continue;
       const p = ACC.prefix(a.code);
@@ -5028,7 +5325,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       o.n++;
       byPfx.set(p, o);
     }
-    const chart = { eq: new Set(), nca: new Set(), ca: new Set(), ncl: new Set() };
+    const chart = { eq: new Set(), nca: new Set(), ca: new Set(), ncl: new Set(), cogs3 };
     byPfx.forEach((o, p) => {
       if (o.eq > 0 && o.eq >= o.liab) chart.eq.add(p);
       if (o.nc > 0 && o.nc >= o.cur) chart.nca.add(p);
@@ -5095,7 +5392,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     if (RULES.payrollExp.test(n)) return { group: 'gasto', sub: 'payroll' };
     if (RULES.fees.test(n)) return { group: 'gasto', sub: 'fees' };
     if (RULES.rent.test(n)) return { group: 'gasto', sub: 'rent' };
-    if (p === '41' || p === '51') return { group: 'gasto', sub: 'cogs', byCode: true };
+    // por código: el grupo 41/51 es costo de ventas, salvo en planes de 6 dígitos donde el plan dice cuál subgrupo lo es
+    // (sin ninguna cuenta de costo en el plan, una empresa de servicios no tiene costo de ventas: son gastos)
+    if ((p === '41' || p === '51') && (dg.length < 5 || (chart.cogs3 && chart.cogs3.has(dg.slice(0, 3))))) return { group: 'gasto', sub: 'cogs', byCode: true };
     return { group: 'gasto', sub: 'opex' };
   };
 
@@ -5112,9 +5411,12 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const col = {};
     const splitCols = [];
     let merged = false;
+    let code2;
     hi.cols.forEach((roles, c) => {
       if (roles.length === 1) {
         if (col[roles[0]] === undefined) col[roles[0]] = c;
+        // "Código | Cuenta": las dos parecen columnas de código; la segunda suele traer el nombre
+        else if (roles[0] === 'code' && code2 === undefined) code2 = c;
       } else if (roles.length > 1 && roles.every((r) => C8.includes(r))) splitCols.push({ c, roles });
       else if (roles.length === 2) {
         col.code = c;
@@ -5140,6 +5442,13 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     };
     const isCodeTxt = (s) => /^\d[\d.,:;\- ]{2,}$/.test(s) && ACC.digits(s).length >= 3;
     const isNameTxt = (s) => (s.match(/[A-Za-zÁÉÍÓÚÑáéíóúñ]/g) || []).length >= 3;
+    if (code2 !== undefined && col.name === undefined) {
+      if (frac(code2, isNameTxt) >= 0.5 && frac(col.code, isCodeTxt) >= 0.4) col.name = code2;
+      else if (frac(col.code, isNameTxt) >= 0.5 && frac(code2, isCodeTxt) >= 0.4) {
+        col.name = col.code;
+        col.code = code2;
+      }
+    }
     if (col.code === undefined) {
       const c = free.map((c) => ({ c, f: frac(c, isCodeTxt) })).filter((x) => x.f >= 0.4).sort((a, b) => b.f - a.f)[0];
       if (c) col.code = c.c;
@@ -5445,9 +5754,21 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         }
       }
     }
-    const strip = (l) => String(l || '').replace(/\s+(fecha|hora|p[aá]gina|rut)\s*:.*$/i, '').replace(/\s+(fecha|hora|p[aá]gina)\s+\d.*$/i, '').trim();
+    // rótulo delante del nombre ("Empresa: X", "Razón social X", o "Empresa | Empresa 1" unido en una línea)
+    const unlabel = (l) => l.replace(/^(raz[oó]n social|nombre( de la empresa| del contribuyente)?|contribuyente|empresa|sociedad|cliente)\s*:\s*/i, '').replace(/^(raz[oó]n social|nombre de la empresa)\s+/i, '').replace(/^empresa\s+(?=empresa\b)/i, '');
+    const strip = (l) => unlabel(String(l || '').replace(/\s+(fecha|hora|p[aá]gina|rut)\s*:.*$/i, '').replace(/\s+(fecha|hora|p[aá]gina)\s+\d.*$/i, '').trim()).trim();
     const clean1 = lines.map(strip).filter((l) => l && !/^[\W_]+$/.test(l));
-    let name = clean1.find((l) => /\b(spa|s\.?a\.?|ltda|limitada|eirl|e\.i\.r\.l|s\.p\.a|sociedad|empresa|comercial|servicios|inversiones)\b/i.test(l) && !/balance|periodo|per[ií]odo/i.test(l)) || '';
+    // un nombre de empresa no es una oración: pocas palabras, sin comillas y con mayúscula en las palabras principales
+    // ("De efectivo, el rubro “pagos a proveedores por el suministro de bienes y servicios”." es parte de una nota)
+    const LOWOK = new Set(['de', 'del', 'la', 'las', 'los', 'el', 'y', 'e', 'en', 'para', 'por', 'a', 'al']);
+    const nameLike = (l) => {
+      const ws = l.split(/\s+/).filter(Boolean);
+      if (ws.length > 10 || l.length > 90 || /[“”"«»]/.test(l)) return false;
+      if (/[,.;:]$/.test(l) && !/\b(s\.?\s?a|ltda|spa|s\.p\.a|e\.i\.r\.l|limitada|cia|c[ií]a|inc|corp)\.?$/i.test(l)) return false;
+      const lower = ws.filter((w) => /^[a-záéíóúñ]/.test(w) && !LOWOK.has(w.toLowerCase())).length;
+      return lower <= Math.max(1, ws.length * 0.34);
+    };
+    let name = clean1.find((l) => /\b(spa|s\.?a\.?|ltda|limitada|eirl|e\.i\.r\.l|s\.p\.a|sociedad|empresa|comercial|servicios|inversiones)\b/i.test(l) && !/balance|periodo|per[ií]odo/i.test(l) && nameLike(l)) || '';
     // "COMERCIAL EJEMPLO SPA F…" → hasta la forma societaria
     const m = name.match(/^(.*?\b(spa|s\.?\s?a\.?|ltda\.?|limitada|eirl|e\.i\.r\.l\.?|s\.p\.a\.?))(\s|$)/i);
     if (m) name = m[1];
@@ -5473,11 +5794,14 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     for (const t of tables) {
       const ctxLines = (t.titleLines || []).concat([t.context || '']);
       const per = ACC.periodOf(ctxLines.join(' '));
-      let g = lastBySource.get(t.sourceId);
+      // un documento por archivo, empresa (tabla dinámica con varias empresas) y período
+      const ent = (t.meta && t.meta.entity) || '';
+      const gk = t.sourceId + '|' + ent;
+      let g = lastBySource.get(gk);
       if (!g || (per && g.per && (per.year !== g.per.year || per.to !== g.per.to))) {
-        g = { tables: [], per, ctx: [] };
+        g = { tables: [], per, ctx: [], entity: ent || null };
         groups.push(g);
-        lastBySource.set(t.sourceId, g);
+        lastBySource.set(gk, g);
       }
       g.tables.push(t);
       g.ctx.push(...ctxLines);
@@ -5589,6 +5913,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       reads.forEach((x) => freq.set(x, (freq.get(x) || 0) + 1));
       const T = Array.from(freq.entries()).sort((a, b) => b[1] - a[1])[0];
       if (T) fitSums(accs, { debe: T[0], haber: T[0] });
+      // en un archivo digital (Excel, PDF con texto) cada monto se lee exacto: una cuenta con una sola lectura
+      // (solo debe y haber) no es dudosa; la confirmación cruzada es para lo que viene de un OCR
+      if (g.tables.every((t) => t.origin !== 'ocr')) accs.forEach((a) => a.cands && a.cands.length <= 1 && (a.sure = true));
       const tot = {};
       C8.forEach((k) => (tot[k] = U.sum(accs, (a) => (a.fin[k] === null || a.fin[k] === undefined ? 0 : a.fin[k]))));
       const result = tot.ganancia - tot.perdida;
@@ -5628,11 +5955,57 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       checks.resultMatch = checks.resultRead === null ? null : near(Math.abs(checks.resultRead), Math.abs(result)) || digitDiff(checks.resultRead, result) <= 1;
       // confianza de la lectura: saldos confirmados y cuadraturas
       checks.confidence = !accs.length ? 0 : Math.round(100 * (0.5 * (1 - checks.unsure / accs.length) + 0.2 * (checks.balanceSquare ? 1 : 0) + 0.15 * (checks.resultMatch === false ? 0 : 1) + 0.15 * (checks.sumasMatch === false ? 0.3 : 1)));
+      // balance después del cierre anual: las cuentas de resultado vienen saldadas; el resultado se reconstruye
+      const closedResult = ACC.reopenClosed(accs);
       const comp = ACC.companyOf(g.ctx);
       const chart = ACC.learnChart(accs);
-      docs.push({ period: g.per, company: comp.name, rut: comp.rut, giro: comp.giro, sources: U.uniq(g.tables.map((t) => t.sourceName)), accounts: accs, totals: tot, result, checks, segChecks, chart, origin: g.tables[0].origin });
+      docs.push({ period: g.per, company: g.entity || comp.name, rut: comp.rut, giro: comp.giro, sources: U.uniq(g.tables.map((t) => t.sourceName)), accounts: accs, totals: tot, result: closedResult ? closedResult.result : result, checks, segChecks, chart, origin: g.tables[0].origin, closedResult });
     }
     return docs;
+  };
+
+  /* balance de comprobación tomado después del asiento de cierre: las cuentas de resultado tienen debe = haber (saldo
+     cero) porque el resultado del año ya pasó a patrimonio. Sin reconstruirlo, el estado de resultados queda en cero.
+     Se usan sus movimientos: ingresos = haber, gastos = debe (montos brutos: una devolución o una reversa registrada en
+     la misma cuenta no se puede separar del cierre). Cada grupo del plan (dos dígitos, luego uno) es de ingresos o de
+     gastos según la mayoría de los nombres de sus cuentas; así "Impuesto diferido" en el grupo de ingresos o "Diferencia
+     de cambio" en el de gastos quedan donde las puso el contador. Devuelve el resumen o null. */
+  ACC.reopenClosed = function (accs) {
+    const moved = accs.filter((a) => a.side === 'res' && ((a.fin.debe || 0) > 0.5 || (a.fin.haber || 0) > 0.5));
+    if (moved.length < 3 || !moved.every((a) => a.saldo !== null && Math.abs(a.saldo) < 0.5)) return null;
+    const nm = (a) => U.norm(a.name || '');
+    const ambiguous = (a) => /diferencias? de cambio|correccion monetaria|\bc\.? ?m\.? |reajuste|impuesto diferido|^ajuste/.test(nm(a) + ' ');
+    const incName = (a) => !ambiguous(a) && /\bingresos?\b|\bventas?\b|intereses? ganados|dividendos? percibidos|utilidad en venta|arriendos? percibidos|descuentos? obtenidos|servicios prestados/.test(nm(a)) && !/costo|gasto|perdida/.test(nm(a));
+    const expName = (a) => !ambiguous(a) && (RULES.cogs.test(nm(a)) || RULES.payrollExp.test(nm(a)) || RULES.fees.test(nm(a)) || RULES.rent.test(nm(a)) || RULES.dep.test(nm(a)) || RULES.fin.test(nm(a)) || RULES.taxExp.test(nm(a)) || RULES.fines.test(nm(a)) || /gastos?|costos?|perdidas?|impuesto|seguros?|consumos?|fletes?|comisiones?/.test(nm(a)));
+    const vote = {};
+    const add = (k, a) => {
+      const v = vote[k] || (vote[k] = { inc: 0, exp: 0 });
+      if (incName(a)) v.inc++;
+      else if (expName(a)) v.exp++;
+    };
+    moved.forEach((a) => {
+      const d = ACC.digits(a.code);
+      add('2:' + d.slice(0, 2), a);
+      add('1:' + d.slice(0, 1), a);
+    });
+    const groupInc = (a) => {
+      const d = ACC.digits(a.code);
+      for (const k of ['2:' + d.slice(0, 2), '1:' + d.slice(0, 1)]) {
+        const v = vote[k];
+        if (v && v.inc !== v.exp) return v.inc > v.exp;
+      }
+      return false;
+    };
+    let income = 0;
+    let expenses = 0;
+    moved.forEach((a) => {
+      const isInc = incName(a) ? true : expName(a) ? false : groupInc(a);
+      a.saldo = isInc ? -(a.fin.haber || 0) : a.fin.debe || 0;
+      a.reopened = true;
+      if (isInc) income += a.fin.haber || 0;
+      else expenses += a.fin.debe || 0;
+    });
+    return { accounts: moved.length, income, expenses, result: income - expenses };
   };
 
   /* ---------- estados financieros desde el balance ---------- */
@@ -5772,12 +6145,15 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const ncl = g('ltdebt') + g('oncl');
     const tl = cl + ncl;
     const eqBooks = g('cap') + g('re');
-    const eq = eqBooks + ni;
+    // con las cuentas de resultado ya cerradas, el resultado del año está dentro de los resultados acumulados
+    const closed = !!doc.closedResult;
+    const eq = closed ? eqBooks : eqBooks + ni;
+    const reOut = closed ? g('re') - ni : g('re');
     const fig = {
       cash: g('cash'), ar: g('ar'), inv: g('inv'), taxrec: g('taxrec'), oca: g('oca'), ca,
       ppe: g('ppe'), ppeGross, accDep, intang: g('intang'), onca: g('onca'), nca, ta,
       stdebt: g('stdebt'), ap: g('ap'), taxliab: g('taxliab'), payroll: g('payroll'), related: g('related'), ocl: g('ocl'), cl,
-      ltdebt: g('ltdebt'), oncl: g('oncl'), ncl, tl, cap: g('cap'), re: g('re'), eq, tle: tl + eq,
+      ltdebt: g('ltdebt'), oncl: g('oncl'), ncl, tl, cap: g('cap'), re: reOut, eq, tle: tl + eq,
       rev, cogs, gp, sga: opex - gi('dep'), dep: gi('dep'), opex, ebit, othinc, othexp, int: fin, ebt, tax, ni,
       ebitda: ebit + gi('dep'), debt: g('stdebt') + g('ltdebt'),
       payrollExp: gi('payroll'), fees: gi('fees'), rent: gi('rent'), opexOther: gi('opex'),
@@ -5785,7 +6161,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     };
     const sq = ta - (tl + eq);
     if (Math.abs(sq) > Math.max(1, Math.abs(ta) * 0.001)) notes.push('El balance reconstruido no cuadra por ' + U.fmtMoney(sq) + ': puede faltar una cuenta o un monto quedó mal leído.');
-    if (doc.result !== undefined && Math.abs(doc.result - ni) > Math.max(1, Math.abs(ni) * 0.001)) notes.push('El resultado del estado de resultados (' + U.fmtMoney(ni) + ') difiere del resultado del balance (' + U.fmtMoney(doc.result) + ').');
+    if (closed) notes.push('Las cuentas de resultado venían cerradas (debe = haber): el resultado del año se reconstruyó con sus movimientos (ingresos ' + U.fmtMoney(doc.closedResult.income) + ', gastos ' + U.fmtMoney(doc.closedResult.expenses) + '). Son montos brutos: si hubo devoluciones o reversas dentro de una misma cuenta, el resultado puede diferir del real.');
+    else if (doc.result !== undefined && Math.abs(doc.result - ni) > Math.max(1, Math.abs(ni) * 0.001)) notes.push('El resultado del estado de resultados (' + U.fmtMoney(ni) + ') difiere del resultado del balance (' + U.fmtMoney(doc.result) + ').');
     return { fig, bal, inc, notes, square: sq, flows };
   };
 
@@ -5973,6 +6350,11 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const active = tables.filter((t) => t.enabled && t.type !== 'otro');
     const byType = (ty) => active.filter((t) => t.type === ty);
     const today = settings.today || U.today();
+    if (settings.entities && settings.entities.list.length > 1) {
+      const ents = settings.entities;
+      issue(model, { dataset: 'estados', severity: 'low', dim: 'cobertura', title: 'Varias empresas en los archivos', detail: 'Los archivos traen ' + ents.list.length + ' empresas (' + U.listJoin(ents.list.map((x) => U.companyCase(x))) + '). Se analiza ' + U.companyCase(ents.selected) + '; para ver otra, elígela en 1 · Fuentes → La empresa → Empresa a analizar.', count: ents.list.length });
+      model.meta.entity = ents.selected;
+    }
 
     // ---------- ventas ----------
     const salesTables = byType('ventas');
@@ -6063,11 +6445,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
               if (!g) return;
               g.accounts.forEach((a) => a.v && model.expenses.push({ d, grain: 'year', concept: V.ACC.displayName(a.name), account: a.code || null, center: null, cat: { payroll: 'Remuneraciones', fees: 'Honorarios', rent: 'Arriendos', opex: 'Gastos generales', dep: 'Depreciación', fin: 'Gastos financieros', othexp: 'Otros gastos' }[k], amount: Math.abs(a.v), doc: null, src: 'balance8' }));
             });
-          } else {
-            const lines = [['Gastos de administración y ventas', f.sga], ['Costos de distribución', f.dist], ['Gastos de ventas', f.sgv]].filter((x) => x[1]);
-            if (!lines.length && f.opex) lines.push(['Gastos de operación', f.opex]);
-            lines.forEach(([concept, v]) => model.expenses.push({ d, grain: 'year', concept, account: null, center: null, cat: null, amount: Math.abs(v), doc: null, src: 'estados' }));
-          }
+          } else M.statementOpex(f).forEach(([concept, v]) => model.expenses.push({ d, grain: 'year', concept, account: null, center: null, cat: null, amount: v, doc: null, src: 'estados' }));
         }
       });
       if (model.sales.length) {
@@ -6973,6 +7351,27 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     recs.forEach((r) => model.competitors.push(r));
   };
 
+  /* fecha de cierre para estados que no la traen ("Fecha de cierre: completar"): la que indicó el usuario en
+     1 · Fuentes; si no, el 31 de diciembre del año anterior a la fecha del archivo (lo habitual: el balance del cierre
+     anual se prepara meses después). Devuelve { to, user } */
+  M.assumedClose = function (model, tables) {
+    const cd = model && model.settings && model.settings.closeDate;
+    if (typeof cd === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(cd)) {
+      const [y, m, d] = cd.split('-').map(Number);
+      return { to: U.dayFromYMD(y, m, d), user: true };
+    }
+    const fd = Math.max(0, ...(tables || []).map((t) => (t && t.fileDate) || 0));
+    const ref = fd ? Math.floor(fd / 86400000) : (model && model.settings && model.settings.today) || U.today();
+    return { to: U.dayFromYMD(U.ymd(ref)[0] - 1, 12, 31), user: false };
+  };
+  M.assumedCloseIssue = function (model, ac) {
+    if (!ac || model.meta.assumedCloseNoted) return;
+    model.meta.assumedCloseNoted = true;
+    model.meta.assumedClose = ac;
+    if (ac.user) fix(model, { dataset: 'estados', title: 'Fecha de cierre indicada', detail: 'Los archivos no traen la fecha de cierre: se usa la que indicaste (' + U.fmtDate(ac.to) + ').', count: 1 });
+    else issue(model, { dataset: 'estados', severity: 'medium', dim: 'validez', title: 'Estados sin fecha de cierre', detail: 'Los archivos no dicen a qué fecha corresponden: se asumió el ' + U.fmtDate(ac.to) + ' (el cierre anual anterior a la fecha del archivo). Si no corresponde, indica la fecha en 1 · Fuentes → La empresa → Fecha de cierre.', count: 1, fixText: 'Indica la fecha de cierre en 1 · Fuentes.' });
+  };
+
   /* etiqueta de un período contable: "2025" (año completo) o "ene–jun 2026" */
   M.periodLabel = function (per) {
     if (!per || per.from === null || per.from === undefined) return 'Sin fecha';
@@ -6991,7 +7390,20 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       return;
     }
     // un balance sin fecha (p. ej. el balance de comprobación de un libro diario) no se mezcla con períodos fechados:
-    // solo se usa si es la única fuente de estados
+    // solo se usa si es la única fuente de estados. Si nada trae fecha (o los estados también la asumieron), se le
+    // asigna la misma fecha de cierre asumida para que balance y estados queden en un solo período
+    const st0 = model.statements;
+    const stAssumed = st0 && st0.assumedClose;
+    const stDated = st0 && st0.periods && st0.periods.length && !stAssumed;
+    if (!docs.some((d) => d.period) && !stDated) {
+      const ac = stAssumed || M.assumedClose(model, tables);
+      const [ay, am] = U.ymd(ac.to);
+      docs.forEach((d) => (d.period = { from: U.dayFromYMD(ay, 1, 1), to: ac.to, year: ay, months: am, assumed: !ac.user }));
+      M.assumedCloseIssue(model, ac);
+    }
+    docs.forEach((d) => {
+      if (d.closedResult) fix(model, { dataset: 'estados', title: 'Resultado reconstruido' + (d.company ? ' (' + d.company + ')' : ''), detail: 'Las cuentas de resultado del balance venían cerradas (debe = haber). El resultado del año se reconstruyó con sus movimientos: ingresos ' + U.fmtMoney(d.closedResult.income) + ' y gastos ' + U.fmtMoney(d.closedResult.expenses) + ' (montos brutos).', count: d.closedResult.accounts });
+    });
     const dated = docs.filter((d) => d.period);
     const use = dated.length || (model.statements && model.statements.periods && model.statements.periods.length) ? dated : docs;
     if (use.length < docs.length) issue(model, { dataset: 'estados', severity: 'low', dim: 'cobertura', title: 'Balance sin fecha', detail: docs.length - use.length + ' balance(s) de 8 columnas sin fecha de cierre no se usaron en el análisis por períodos: hay otras fuentes con fecha.', count: docs.length - use.length });
@@ -7013,13 +7425,28 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const s8 = V.ACC.toStatements(d);
       // si también se cargaron estados financieros de ese período (p. ej. ajustados por el contador), mandan esos
       const had = st.fig[lab] && (st.fig[lab].ta || st.fig[lab].rev);
+      let half = null;
       if (!had) st.fig[lab] = Object.assign(s8.fig, { months: d.period ? d.period.months : 12 });
       else {
         // los estados resumidos no traen el detalle (depreciación, remuneraciones, honorarios…): si las cifras
         // totales coinciden con las del balance, el detalle se toma del balance
         const fe = st.fig[lab];
         const near = (a, b) => Math.abs((a || 0) - (b || 0)) <= Math.max(1, Math.abs(b || 0) * 0.01);
-        if (near(fe.ni, s8.fig.ni) && (!fe.ta || near(fe.ta, s8.fig.ta))) {
+        const INCK = ['rev', 'cogs', 'gp', 'sga', 'opex', 'ebit', 'ebitda', 'othinc', 'othexp', 'int', 'ebt', 'tax', 'ni', 'dep', 'payrollExp', 'fees', 'rent', 'opexOther', 'fines'];
+        const BALK = ['cash', 'ar', 'inv', 'taxrec', 'oca', 'ca', 'ppe', 'ppeGross', 'accDep', 'intang', 'onca', 'nca', 'ta', 'stdebt', 'ap', 'taxliab', 'payroll', 'related', 'ocl', 'cl', 'ltdebt', 'oncl', 'ncl', 'tl', 'cap', 're', 'eq', 'tle', 'debt'];
+        const has = (x) => x !== null && x !== undefined && x !== 0;
+        // unos estados con solo el balance (un estado de situación) y un balance de comprobación del mismo cierre:
+        // el estado de resultados sale del balance de comprobación, si ambos cuadran en el activo total
+        // (lo que los estados sí traen, como un "Resultado del ejercicio" informado, se respeta)
+        if (!has(fe.rev) && !has(fe.cogs) && !has(fe.gp) && has(s8.fig.rev) && (!has(fe.ta) || near(fe.ta, s8.fig.ta))) {
+          INCK.forEach((k) => !has(fe[k]) && s8.fig[k] !== undefined && s8.fig[k] !== null && (fe[k] = s8.fig[k]));
+          // los resultados acumulados del estado ya incluían el resultado del año (cuentas cerradas)
+          if (d.closedResult && has(fe.re) && near(fe.re, s8.fig.re + s8.fig.ni)) fe.re = s8.fig.re;
+          half = 'resultados';
+        } else if (!has(fe.ta) && has(s8.fig.ta)) {
+          BALK.forEach((k) => s8.fig[k] !== undefined && s8.fig[k] !== null && (fe[k] = s8.fig[k]));
+          half = 'balance';
+        } else if (near(fe.ni, s8.fig.ni) && (!fe.ta || near(fe.ta, s8.fig.ta))) {
           ['dep', 'accDep', 'ppeGross', 'payrollExp', 'fees', 'rent', 'opexOther', 'fines'].forEach((k) => {
             if ((fe[k] === undefined || fe[k] === null || fe[k] === 0) && s8.fig[k]) fe[k] = s8.fig[k];
           });
@@ -7027,7 +7454,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       }
       st.detail[lab] = { doc: d, bal: s8.bal, inc: s8.inc, flows: s8.flows, notes: s8.notes, square: s8.square, overridden: !!had };
       st.info[lab] = { from: d.period ? d.period.from : null, to: d.period ? d.period.to : null, months: d.period ? d.period.months : 12, source: had ? 'estados+balance8' : 'balance8' };
-      if (had) fix(model, { dataset: 'estados', title: 'Dos fuentes para ' + lab, detail: 'Hay estados financieros y un balance de 8 columnas del mismo período: se usan las cifras de los estados (resultado ' + U.fmtMoney(st.fig[lab].ni) + ') y el balance aporta el detalle de cuentas (resultado según balance ' + U.fmtMoney(s8.fig.ni) + ').', count: 1 });
+      if (half === 'resultados') fix(model, { dataset: 'estados', title: 'Dos fuentes para ' + lab, detail: 'Los estados financieros traen solo el balance (activo ' + U.fmtMoney(st.fig[lab].ta) + ', igual al del balance de comprobación): el estado de resultados se armó con las cuentas de resultado del balance de comprobación (resultado ' + U.fmtMoney(st.fig[lab].ni) + ').', count: 1 });
+      else if (half === 'balance') fix(model, { dataset: 'estados', title: 'Dos fuentes para ' + lab, detail: 'Los estados financieros traen solo el estado de resultados: el balance (activo ' + U.fmtMoney(st.fig[lab].ta) + ') se armó con las cuentas del balance de comprobación.', count: 1 });
+      else if (had) fix(model, { dataset: 'estados', title: 'Dos fuentes para ' + lab, detail: 'Hay estados financieros y un balance de 8 columnas del mismo período: se usan las cifras de los estados (resultado ' + U.fmtMoney(st.fig[lab].ni) + ') y el balance aporta el detalle de cuentas (resultado según balance ' + U.fmtMoney(s8.fig.ni) + ').', count: 1 });
       if (!st.periods.includes(lab)) st.periods.push(lab);
       d.sources.forEach((x) => st.sources.push(x + ' · balance de 8 columnas ' + lab));
       const ck = d.checks;
@@ -7049,6 +7478,30 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     model.statements = st;
     const latest = st.periods.map((p) => byP.get(p)).find(Boolean);
     model.ledger = { docs: Array.from(byP.values()), company: latest.company, rut: latest.rut, giro: latest.giro };
+  };
+
+  /* gastos de operación de un estado de resultados (cuando no hay un detalle de gastos): sus líneas de gastos y, si
+     no alcanzan para llegar al resultado operacional del estado, lo que falta (remuneraciones o depreciación
+     presentadas por naturaleza, otras ganancias o gastos de la operación). Así el resultado operacional del reporte es
+     el del estado y no el margen bruto menos una sola línea. Devuelve [[concepto, monto]] */
+  M.statementOpex = function (f) {
+    const num = (x) => x !== null && x !== undefined && isFinite(x);
+    const lines = [['Gastos de administración y ventas', f.sga], ['Costos de distribución', f.dist], ['Gastos de ventas', f.sgv]].filter((x) => x[1]).map((x) => [x[0], Math.abs(x[1])]);
+    if (!lines.length && f.opex) lines.push(['Gastos de operación', Math.abs(f.opex)]);
+    const gp = num(f.gp) ? f.gp : num(f.rev) && num(f.cogs) ? f.rev - Math.abs(f.cogs) : null;
+    if (gp !== null && num(f.ebit)) {
+      // (tolerancia de redondeo: 0,05% de las ventas; en una empresa grande el 0,5% ya es un monto importante)
+      const tol = Math.max(1, Math.abs(f.rev || 0) * 0.0005);
+      let gap = gp - f.ebit - U.sum(lines, (x) => x[1]);
+      [['Remuneraciones', f.payrollExp], ['Depreciación y amortización', f.dep]].forEach(([n, v]) => {
+        if (v && gap >= Math.abs(v) - tol) {
+          lines.push([n, Math.abs(v)]);
+          gap -= Math.abs(v);
+        }
+      });
+      if (Math.abs(gap) > tol) lines.push([gap > 0 ? 'Otros gastos de operación' : 'Otras ganancias de la operación (restan)', gap]);
+    }
+    return lines;
   };
 
   /* estados financieros sin años completos (ene–jun 2026 vs ene–jun 2025) o de un banco: el reporte compara
@@ -7080,12 +7533,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const d = i.to;
       model.sales.push({ d, grain, months, prod: null, sku: null, cat: null, br: null, ch: null, cli: null, ven: null, doc: null, q: null, pr: null, rev: Math.abs(revOf(f)), cost: !bank && f.cogs ? Math.abs(f.cogs) : null, src: 'estados' });
       if (hasExpenses) return;
-      const lines = bank
-        ? [['Remuneraciones y beneficios a empleados', f.staff], ['Gastos de administración', f.adm], ['Depreciación y amortización', f.depam], ['Otros gastos operacionales', (f.otherOpExp || 0) + (f.impair || 0)]]
-        : [['Gastos de administración y ventas', f.sga], ['Costos de distribución', f.dist], ['Gastos de ventas', f.sgv]];
-      const ls = lines.filter((x) => x[1]);
-      if (!ls.length && !bank && f.opex) ls.push(['Gastos de operación', f.opex]);
-      ls.forEach(([concept, v]) => model.expenses.push({ d, grain, months, concept, account: null, center: null, cat: null, amount: Math.abs(v), doc: null, src: 'estados' }));
+      const ls = bank
+        ? [['Remuneraciones y beneficios a empleados', f.staff], ['Gastos de administración', f.adm], ['Depreciación y amortización', f.depam], ['Otros gastos operacionales', (f.otherOpExp || 0) + (f.impair || 0)]].filter((x) => x[1]).map((x) => [x[0], Math.abs(x[1])])
+        : M.statementOpex(f);
+      ls.forEach(([concept, v]) => model.expenses.push({ d, grain, months, concept, account: null, center: null, cat: null, amount: v, doc: null, src: 'estados' }));
     };
     push(cur);
     if (prev) push(prev);
@@ -7101,6 +7552,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   M.statementsFromTables = function (tables, model) {
     const out = { periods: [], items: [], fig: {}, sources: [], info: {}, notes: [], stNotes: [] };
     const byKey = new Map();
+    const mainHead = new Set();
     const INC = new Set(['rev', 'cogs', 'gp', 'sga', 'dist', 'sgv', 'ebit', 'int', 'ebt', 'tax', 'ni', 'dep', 'amort']);
     // advertencias de quien preparó los estados ("Nota 1: no se determinó el costo de ventas", "Julio incorpora solo
     // movimientos de tesorería"): se muestran en el reporte, porque cambian lo que se puede concluir
@@ -7171,25 +7623,45 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         });
       }
       const tIndex = out.sources.length;
-      const ctxTxt = (t.titleLines || []).join(' ') + ' ' + (t.context || '');
+      // encabezado de la página del PDF ("Estados de situación financiera / Al 31 de marzo de 2026 y al 31 de diciembre de 2025")
+      const pageHead = ((t.meta && Array.isArray(t.meta.pageHead) && t.meta.pageHead) || []).join(' ');
+      const ctxTxt = (t.titleLines || []).join(' ') + ' ' + (t.context || '') + ' ' + pageHead;
+      // página rotulada como uno de los estados ("Estado intermedio de situación financiera consolidado", "Estado de
+      // resultados por función"): es un estado principal, no una nota
+      const phN = U.norm(pageHead);
+      if (/estados?\b.{0,45}(situacion financiera|resultados?\b|resultado integral|flujos? de efectivo)|balance (general|clasificado)/.test(phN) && !/notas? a los|^indice|\bindice\b/.test(phN)) mainHead.add(tIndex);
       (t.titleLines || []).forEach((ln) => {
         if (/incorpora solo|solo incluye|no incluye|sin auditar|no auditad|provisori|preliminar|borrador|no es comparable|no comparable/.test(U.norm(ln))) addNote(ln, t);
       });
       // período del título: "por el período terminado al 31 de agosto de 2026", "al 31.12.2025", "2025"
       const tlTxt = (t.titleLines || []).join(' ');
-      const ctxFull = S.periodOf(tlTxt);
-      const ctxPer = ctxFull && ctxFull.kind !== 'year' ? ctxFull : S.periodOf((tlTxt.match(/(\d{1,2}[.\/\-]\d{1,2}[.\/\-](19|20)\d{2})|((19|20)\d{2})/) || [''])[0]);
+      const perOf = (txt) => {
+        const full = S.periodOf(txt);
+        return full && full.kind !== 'year' ? full : S.periodOf((txt.match(/(\d{1,2}[.\/\-]\d{1,2}[.\/\-](19|20)\d{2})|((19|20)\d{2})/) || [''])[0]);
+      };
+      const ctxPer = perOf(tlTxt) || (pageHead ? perOf(pageHead) : null);
       // columna de notas ("Nota 5", "7"): números chicos junto a montos grandes; no es un período
       const bigOf = (c) => Math.max(0, ...t.rows.map((r) => Math.abs(S.parseNumber(r[c], t.profiles[c].fmt) || 0)));
       const maxBig = Math.max(0, ...valCols.map(bigOf));
       for (let k = valCols.length - 1; k >= 0; k--) if (valCols.length > 1 && maxBig >= 1000 && bigOf(valCols[k]) < 100 && !S.periodOf(t.headers[valCols[k]])) valCols.splice(k, 1);
       let heads = valCols.map((c) => S.periodOf(t.headers[c]));
-      // sin encabezado de períodos: los años del título ("al 31 de diciembre de 2025 y 2024"), en ese orden
+      // sin encabezado de períodos: las fechas del título o de la página, en ese orden ("al 31 de marzo de 2026 y al
+      // 31 de diciembre de 2025", "al 31 de diciembre de 2025 y 2024", "2025 y 2024")
       if (heads.every((p) => !p)) {
-        const ys = [];
-        (U.norm(ctxTxt).match(/\b(19|20)\d{2}\b/g) || []).forEach((y) => !ys.includes(y) && ys.push(y));
-        if (ys.length === valCols.length && ys.length > 1) heads = ys.map((y) => S.periodOf('31.12.' + y));
+        let ds = S.closingDates(ctxTxt);
+        // fechas de inicio ("01/01/2026") no son cierres: si hay suficientes fines de mes, solo esos
+        const ends = ds.filter((d) => U.ymd(d + 1)[2] === 1);
+        if (ends.length >= valCols.length) ds = ends;
+        if (ds.length === valCols.length && ds.length > 1) heads = ds.map((d) => S.periodOf({ d }));
         else if (valCols.length === 1 && ctxPer) heads = [ctxPer];
+        else if (valCols.length === 1 && ds.length === 1) heads = [S.periodOf({ d: ds[0] })];
+        else if (valCols.length === 1 && (rawKeys.has('ta') || rawKeys.has('tle') || (rawKeys.has('rev') && (rawKeys.has('ni') || rawKeys.has('ebt'))))) {
+          // un estado completo sin ninguna fecha ("Fecha de cierre: completar"): se usa la fecha que indicó el usuario
+          // o se asume el cierre anual anterior a la fecha del archivo (y se avisa)
+          const ac = M.assumedClose(model, [t]);
+          heads = [S.periodOf({ d: ac.to })];
+          out.assumedClose = ac;
+        }
       }
       // sin ningún período reconocible (columnas "Débitos", "Créditos", "Saldo"): los montos no se pueden ubicar en el tiempo
       if (heads.every((p) => !p)) continue;
@@ -7219,6 +7691,22 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         if (other >= 0 && !pers[k].loose) {
           pers.splice(k, 1);
           valCols.splice(k, 1);
+        }
+      }
+      // columnas comparativas del mismo estado (mismo día y mes de cierre, años distintos) cubren la misma cantidad
+      // de meses: un "01/03/2025" mal escrito en el encabezado no convierte el trimestre comparativo en un mes
+      {
+        const rng = pers.filter((p) => p && p.from && p.to && p.months && !p.loose);
+        const md = (d) => U.ymd(d)[1] * 100 + U.ymd(d)[2];
+        const yrs = new Set(rng.map((p) => U.ymd(p.to)[0]));
+        if (rng.length >= 2 && yrs.size === rng.length && rng.every((p) => md(p.to) === md(rng[0].to))) {
+          const mx = Math.max(...rng.map((p) => p.months));
+          rng.forEach((p) => {
+            if (p.months === mx) return;
+            const [y, m] = U.ymd(p.to);
+            const from = U.dayFromYMD(y, m - mx + 1, 1);
+            pers[pers.indexOf(p)] = Object.assign({}, p, { from, months: mx, m0: U.ymd(from)[1], fixedLen: true });
+          });
         }
       }
       pers.forEach((p) => {
@@ -7294,6 +7782,60 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       });
       model.lineage[t.id] = { type: 'estados', rows: t.rows.length, used: t.rows.length };
     }
+    if (out.assumedClose) M.assumedCloseIssue(model, out.assumedClose);
+    // estados principales: los que traen el total del activo (o del pasivo y patrimonio) o los ingresos con un
+    // resultado. Las notas solo completan partidas que esos estados no traen, y no agregan períodos propios (una
+    // nota con "01/01/2026" en el encabezado no es un período más, ni su "depreciación acumulada" reemplaza nada)
+    const keysByT = new Map();
+    const incT = new Set();
+    out.items.forEach((i) => {
+      if (!i.key) return;
+      if (!keysByT.has(i.tIndex)) keysByT.set(i.tIndex, new Set());
+      keysByT.get(i.tIndex).add(i.key);
+      if (i.income) incT.add(i.tIndex);
+    });
+    let core = new Set();
+    keysByT.forEach((ks, ti) => {
+      // balance con su total; ingresos con un resultado; o un estado de resultados completo aunque su línea de ingresos
+      // no tenga un nombre conocido (formatos de la CMF: "Ingreso operacional neto")
+      if (((ks.has('ta') || ks.has('tle')) && ks.size >= 4) || (ks.has('rev') && (ks.has('ni') || ks.has('ebt') || ks.has('ebit') || ks.has('gp'))) || (incT.has(ti) && (ks.has('ni') || ks.has('ebt')) && ks.size >= 3)) core.add(ti);
+    });
+    // si el documento rotula sus estados en el encabezado de la página, esos mandan: el balance resumido de una filial en
+    // una nota trae "Total activos", pero no es el balance de la empresa
+    const labeled = new Set(Array.from(keysByT.keys()).filter((ti) => mainHead.has(ti) && (core.has(ti) || keysByT.get(ti).size >= 3)));
+    if (labeled.size && Array.from(labeled).some((ti) => core.has(ti))) core = labeled;
+    if (core.size && out.items.some((i) => !core.has(i.tIndex))) {
+      const corePer = new Set();
+      const coreHas = new Set();
+      // qué trae el estado principal en cada período: balance, resultados o ambos (una nota de diferencias de cambio
+      // con "Efectivo (460)" no inventa la caja de un período que solo tiene estado de resultados)
+      // (la "Utilidad del período" dentro del patrimonio de un balance es parte del balance, no un estado de resultados)
+      const kindOf = (i) => (i.income || (i.key !== 'ni' && (INC.has(i.key) || S.INC_KEYS.has(i.key))) ? 'inc' : 'bal');
+      const coreKind = new Set();
+      out.items.forEach((i) => {
+        if (!core.has(i.tIndex)) return;
+        Object.keys(i.values).forEach((k) => {
+          corePer.add(k);
+          if (i.key) {
+            coreHas.add(i.key + '|' + k);
+            coreKind.add(k + '|' + kindOf(i));
+          }
+        });
+      });
+      let dropped = 0;
+      out.items = out.items.filter((i) => {
+        if (core.has(i.tIndex)) return true;
+        Object.keys(i.values).forEach((k) => {
+          if (!corePer.has(k) || (i.key && (coreHas.has(i.key + '|' + k) || !coreKind.has(k + '|' + kindOf(i))))) delete i.values[k];
+        });
+        if (!Object.keys(i.values).length) dropped++;
+        return Object.keys(i.values).length > 0;
+      });
+      Array.from(byKey.keys()).forEach((k) => !corePer.has(k) && byKey.delete(k));
+      out.coreTables = core.size;
+      out.notesDropped = dropped;
+    }
+    const inCore = (i) => core.has(i.tIndex);
     // etiqueta visible de cada período: "2025" (año completo) o "ene–mar 2026"
     const labelOf = (P) => {
       if (P.label && !P.to) return P.label;
@@ -7315,18 +7857,32 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       i.values = v2;
     });
     out.periods = keys.map((P) => labelByKey[P.key]);
-    // cifras canónicas por período
+    // cifras canónicas por período: primero las de los estados principales (en el orden del documento); un total de
+    // otra tabla (el "Total ingresos" redondeado del análisis razonado) no reemplaza la línea del estado de resultados
+    const pool = (key, p) => {
+      const c = out.items.filter((i) => i.key === key && i.values[p] !== undefined);
+      const cc = c.filter(inCore);
+      return cc.length ? cc : c;
+    };
     const pick = (key, p, preferTotal) => {
-      const cands = out.items.filter((i) => i.key === key && i.values[p] !== undefined);
+      const cands = pool(key, p);
       if (!cands.length) return null;
+      if (core.size) {
+        const t0 = Math.min(...cands.map((i) => i.tIndex));
+        const inT = cands.filter((i) => i.tIndex === t0);
+        // entre dos totales de la misma partida, el de rótulo exacto ("Total pasivos corrientes" y no "Total de pasivos
+        // corrientes distintos de los pasivos incluidos en grupos…")
+        const tt = inT.filter((i) => i.isTotal).sort((a, b) => String(a.label).length - String(b.label).length)[0];
+        return (preferTotal && tt ? tt : inT[0]).values[p];
+      }
       const tot = cands.find((i) => i.isTotal);
       return (preferTotal && tot ? tot : cands[0]).values[p];
     };
     // partidas de detalle (varias cuentas del mismo tipo): se suman dentro de la primera tabla que las trae
     const pickSum = (key, p) => {
       const byT = new Map();
-      out.items.forEach((i) => {
-        if (i.key !== key || i.values[p] === undefined || i.isTotal) return;
+      pool(key, p).forEach((i) => {
+        if (i.isTotal) return;
         byT.set(i.tIndex, (byT.get(i.tIndex) || 0) + i.values[p]);
       });
       if (!byT.size) return null;
@@ -7335,7 +7891,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     // efectivo, clientes, proveedores y préstamos con varias cuentas (dos bancos, préstamo y factoring): se suman; si una
     // de ellas ya es la suma de las demás (el grupo con su detalle), se usa esa
     const pickD = (key, p) => {
-      const cands = out.items.filter((i) => i.key === key && i.values[p] !== undefined);
+      const cands = pool(key, p);
       if (!cands.length) return null;
       const tot = cands.find((i) => i.isTotal);
       if (tot) return tot.values[p];
@@ -7366,7 +7922,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const fx = pickSum('fx', p);
       if (fx) fx > 0 ? (f.othinc = (f.othinc || 0) + fx) : (f.othexp = (f.othexp || 0) - fx);
       // "Total ingresos" que ya incluye otros ingresos: no se cuentan dos veces
-      const revTot = out.items.find((i) => i.key === 'rev' && i.isTotal && i.values[p] !== undefined);
+      const revTot = pool('rev', p).find((i) => i.isTotal && i.values[p] === f.rev);
       if (revTot && f.othinc) {
         const partsRev = out.items.filter((i) => i.key === 'rev' && !i.isTotal && i.tIndex === revTot.tIndex && i.values[p] !== undefined).reduce((a, i) => a + i.values[p], 0);
         const oi = out.items.filter((i) => i.key === 'othinc' && i.tIndex === revTot.tIndex && i.values[p] !== undefined).reduce((a, i) => a + Math.abs(i.values[p]), 0);
@@ -7389,6 +7945,30 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       f.months = out.info[p] && out.info[p].months ? out.info[p].months : 12;
       out.fig[p] = f;
     }
+    // unidad: un activo (o un ingreso) mil o un millón de veces menor que el de los otros períodos es una unidad que no
+    // se leyó (M$ en un cierre, pesos en el otro; activo de $ 101 MM frente a $ 106.192 MM). Se compara activo con
+    // activo e ingreso con ingreso, se lleva el período desalineado a la unidad de los demás y se avisa
+    const rescaled = new Set();
+    ['ta', 'rev'].forEach((key) => {
+      const sz = (p) => Math.abs((out.fig[p] && out.fig[p][key]) || 0);
+      const ps = out.periods.filter((p) => sz(p) > 0 && !rescaled.has(p));
+      if (ps.length < 2) return;
+      const big = Math.max(...ps.map(sz));
+      ps.forEach((p) => {
+        const s = sz(p);
+        for (const k of [1e3, 1e6]) {
+          const r = big / s / k;
+          if (r <= 0.6 || r >= 1.7) continue;
+          const f = out.fig[p];
+          Object.keys(f).forEach((x) => x !== 'months' && typeof f[x] === 'number' && (f[x] *= k));
+          out.items.forEach((i) => i.values[p] !== undefined && (i.values[p] *= k));
+          rescaled.add(p);
+          const word = k === 1e3 ? 'miles' : 'millones';
+          fix(model, { dataset: 'estados', title: 'Unidad corregida en ' + p, detail: 'Las cifras de ' + p + ' eran ' + (k === 1e3 ? 'mil' : 'un millón de') + ' veces menores que las de los otros períodos (' + (key === 'ta' ? 'activo' : 'ingresos') + ' de ' + U.fmtMoney(s) + ' frente a ' + U.fmtMoney(big) + '): venían en ' + word + ' de pesos sin indicarlo y se llevaron a pesos.', count: 1 });
+          break;
+        }
+      });
+    });
     // cuadre del balance
     for (const p of out.periods) {
       const f = out.fig[p];
@@ -12430,6 +13010,13 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     }
     if (Math.abs(opexCash) > 0.5) steps.push({ label: 'Gastos', full: 'Gastos de operación', value: -opexCash, kind: 'delta' });
     if (dep > 0.5 && nz(f.opex) >= dep) steps.push({ label: 'Depreciación', value: -dep, kind: 'delta' });
+    // lo que falta para llegar al resultado operacional informado (otras ganancias o gastos de la operación, gastos que
+    // el estado presenta por naturaleza): sin este paso, la cascada no conecta con su total
+    if (has(f.ebit)) {
+      const reached = (Math.abs(nz(f.cogs)) > 0.5 ? f.gp : f.rev) - (Math.abs(opexCash) > 0.5 ? opexCash : 0) - (dep > 0.5 && nz(f.opex) >= dep ? dep : 0);
+      const plug = f.ebit - reached;
+      if (Math.abs(plug) > Math.abs(f.rev) * 0.001) steps.push({ label: 'Otros oper.', full: 'Otros ingresos y gastos de la operación', value: plug, kind: 'delta' });
+    }
     steps.push({ label: 'Operacional', full: 'Resultado operacional', value: f.ebit, kind: 'total' });
     const other = nz(f.othinc) - nz(f.othexp);
     const fin = nz(f.int);
@@ -12460,9 +13047,46 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     return { cf, steps };
   };
 
+  /* D · estructura del balance al último cierre: lo que la empresa tiene (izquierda) y cómo lo financia (derecha),
+     con lo de corto plazo arriba para comparar el activo corriente con el pasivo corriente. Sirve aunque haya un solo
+     balance (los gráficos por año necesitan dos o más). */
+  N.balanceStructure = function (FIN) {
+    const bp = FIN.periods.filter((p) => FIN.fig[p] && FIN.fig[p].ta > 0);
+    if (!bp.length) return null;
+    const p = bp[bp.length - 1];
+    const f = FIN.fig[p];
+    const nz = (x) => (has(x) ? x : 0);
+    const ta = f.ta;
+    let ca = has(f.ca) ? f.ca : null;
+    let nca = has(f.nca) ? f.nca : null;
+    if (ca === null && nca !== null) ca = ta - nca;
+    if (nca === null && ca !== null) nca = ta - ca;
+    const tl = has(f.tl) ? f.tl : has(f.eq) ? ta - f.eq : null;
+    let cl = has(f.cl) ? f.cl : null;
+    let ncl = has(f.ncl) ? f.ncl : null;
+    if (cl === null && ncl !== null && tl !== null) cl = tl - ncl;
+    if (ncl === null && cl !== null && tl !== null) ncl = tl - cl;
+    const eq = has(f.eq) ? f.eq : tl !== null ? ta - tl : null;
+    if (ca === null || cl === null || eq === null || ca < 0 || nca < 0 || cl < 0 || nz(ncl) < 0) return null;
+    const series = [
+      { name: 'Activo no corriente', cat: 3, values: [nca, 0] },
+      { name: 'Activo corriente', cat: 0, values: [ca, 0] },
+      { name: 'Patrimonio', cat: 2, values: [0, eq] },
+      { name: 'Pasivo no corriente', cat: 4, values: [0, nz(ncl)] },
+      { name: 'Pasivo corriente', cat: 1, values: [0, cl] },
+    ].filter((s) => s.values.some((v) => Math.abs(v) > 0.5));
+    const wc = ca - cl;
+    const liq = cl > 0 ? ca / cl : null;
+    const title = 'Estructura del balance al cierre de ' + p + ': ' + (wc >= 0 ? (has(liq) ? 'el activo corriente cubre ' + U.fmtNum(liq, 2) + ' veces la deuda de corto plazo' : 'sin deudas de corto plazo') : 'la deuda de corto plazo supera al activo corriente en ' + f$(-wc));
+    const caption = 'Izquierda: lo que la empresa tiene. Derecha: cómo lo financia (deudas y patrimonio); ambas columnas suman ' + f$(ta) + '. Arriba va lo de corto plazo: si el pasivo corriente es más alto que el activo corriente, el capital de trabajo es negativo.' + (eq < 0 ? ' El patrimonio es negativo: queda bajo cero.' : '');
+    return { title, caption, spec: { type: 'columns', stacked: true, categories: ['Activos', 'Pasivos y patrimonio'], series, format: 'money', segLabels: 'inside', barW: 96, tableHead: 'Lado' } };
+  };
+
   N.yearFin = function (FIN, ex0) {
     const out = {};
     const ex = (pl, o) => ex0(pl, Object.assign(o, { years: true }));
+    const bs = N.balanceStructure(FIN);
+    if (bs) out.structure = ex('D', { kind: 'chart', title: bs.title, caption: bs.caption, spec: bs.spec });
     const Y = N.finYears(FIN);
     const ps = Y.list;
     if (ps.length < 2) return out;
@@ -12543,7 +13167,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (aSeries.length >= 2) {
         const fL = fig(bp[bp.length - 1]);
         const shares = aSeries.map((s) => ({ n: s.name, v: s.values[s.values.length - 1] })).sort((a, b) => b.v - a.v);
-        out.assets = ex('D', { kind: 'chart', title: 'Composición del activo por año: ' + low1(shares[0].n) + ' pesa ' + fp(shares[0].v / fL.ta, 0) + ' en ' + bp[bp.length - 1], caption: 'Activo total al cierre de cada período, separado en sus partes. Arriba de cada columna, el total.' + (bp.length > 1 && fig(bp[0]).ta > 0 ? ' El activo pasó de ' + f$(fig(bp[0]).ta) + ' a ' + f$(fL.ta) + '.' : ''), spec: { type: 'columns', stacked: true, categories: bcats, series: aSeries, format: 'money', partial: bpart.map(() => false), tableHead: 'Cierre' } });
+        out.assets = ex('D', { kind: 'chart', title: 'Composición del activo por año: ' + low1(shares[0].n) + ' pesa ' + fp(shares[0].v / fL.ta, 0) + ' en ' + bp[bp.length - 1], caption: 'Activo total al cierre de cada período, separado en sus partes. Arriba de cada columna, el total.' + (bp.length > 1 && fig(bp[0]).ta > 0 ? ' El activo pasó de ' + f$(fig(bp[0]).ta) + ' a ' + f$(fL.ta) + '.' : ''), spec: { type: 'columns', stacked: true, categories: bcats, series: aSeries, format: 'money', partial: bpart.map(() => false), segLabels: 'last', tableHead: 'Cierre' } });
       }
       // D · cómo se financia el activo
       const debt = (f) => nz(f.stdebt) + nz(f.ltdebt);
@@ -12558,7 +13182,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (lSeries.length >= 2) {
         const fL = fig(bp[bp.length - 1]);
         const neg = bp.filter((p) => fig(p).eq < 0);
-        out.liab = ex('D', { kind: 'chart', title: 'Cómo se financia el activo por año: ' + (fL.eq > 0 ? 'el patrimonio aporta ' + fp(fL.eq / fL.ta, 0) + ' en ' + bp[bp.length - 1] : 'el patrimonio es negativo en ' + bp[bp.length - 1]), caption: 'Pasivos y patrimonio al cierre de cada período (suman el activo total).' + (neg.length ? ' En ' + U.listJoin(neg) + ' el patrimonio fue negativo: su parte (azul) queda bajo cero.' : ''), spec: { type: 'columns', stacked: true, categories: bcats, series: lSeries, format: 'money', tableHead: 'Cierre' } });
+        out.liab = ex('D', { kind: 'chart', title: 'Cómo se financia el activo por año: ' + (fL.eq > 0 ? 'el patrimonio aporta ' + fp(fL.eq / fL.ta, 0) + ' en ' + bp[bp.length - 1] : 'el patrimonio es negativo en ' + bp[bp.length - 1]), caption: 'Pasivos y patrimonio al cierre de cada período (suman el activo total).' + (neg.length ? ' En ' + U.listJoin(neg) + ' el patrimonio fue negativo: su parte (azul) queda bajo cero.' : ''), spec: { type: 'columns', stacked: true, categories: bcats, series: lSeries, format: 'money', segLabels: 'last', tableHead: 'Cierre' } });
       }
       // D · liquidez
       const liq = { name: 'Liquidez corriente', cat: 0, values: ps.map((p) => (has(k(p).liq) ? k(p).liq : null)) };
@@ -13556,7 +14180,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const grouped = !stacked && series.length > 1;
     const ok = (v) => v !== null && v !== undefined && isFinite(v);
     if (!n || !series.length) return { svg: '', h: 0 };
-    w = Math.min(w, Math.max(340, 110 + n * (series.length > 1 && !stacked ? 60 * series.length + 60 : 150)));
+    // rótulos directos junto a la última columna apilada ("Activo fijo 62%"): se reserva espacio a la derecha
+    const lastLab = stacked && spec.segLabels === 'last' && w >= 420 ? 124 : 0;
+    w = Math.min(w, Math.max(340, 110 + n * (series.length > 1 && !stacked ? 60 * series.length + 60 : spec.barW ? spec.barW + 140 : 150)) + lastLab);
     const lg = series.length > 1 ? legendBlock(series, th, 0, w, 'bar') : { svg: '', h: 0 };
     const hasNote = !!(spec.note && spec.note.some(Boolean));
     const h = (spec.h || Math.round(Math.max(230, Math.min(300, w * 0.42)))) + (lg.h > 24 ? lg.h - 24 : 0) + (hasNote ? 14 : 0);
@@ -13591,13 +14217,13 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const ticks = U.niceTicks(lo, hi, 5);
     const yLabW = Math.max(...ticks.ticks.map((t) => textW(C.fmtTick(t, spec.format, ticks.step), 11))) + 10;
     const x0 = yLabW + 4;
-    const x1 = w - 8;
+    const x1 = w - 8 - lastLab;
     const y0 = top;
     const y1 = h - bottom;
     const sy = (v) => y1 - ((v - ticks.min) / (ticks.max - ticks.min || 1)) * (y1 - y0);
     const band = (x1 - x0) / n;
     const per = grouped ? series.length : 1;
-    const bw = Math.max(5, Math.min(grouped ? 16 : 24, (band * 0.64 - (per - 1) * 2) / per));
+    const bw = Math.max(5, Math.min(grouped ? 16 : spec.barW || 24, (band * 0.64 - (per - 1) * 2) / per));
     const gw = per * bw + (per - 1) * 2;
     const partial = spec.partial || [];
     let g = lg.svg;
@@ -13638,6 +14264,25 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           if (sg.a === 0) return;
           g += '<rect x="' + (bx - 0.5) + '" y="' + (sy(sg.a) - 1) + '" width="' + (bw + 1) + '" height="2" fill="' + th.surface + '"/>';
         });
+        // participación de cada parte en su columna: dentro del segmento (si cabe) o al lado de la última columna con su
+        // nombre, para no tener que ir y volver a la leyenda
+        const colTot = segs.reduce((a, sg) => a + Math.abs(sg.v), 0);
+        if (spec.segLabels === 'inside' && colTot > 0) {
+          segs.forEach((sg) => {
+            const hh = Math.abs(sy(sg.b) - sy(sg.a));
+            const lbl = U.fmtPct(Math.abs(sg.v) / colTot, 0);
+            if (hh < 16 || textW(lbl, 11) > bw - 6) return;
+            g += '<text x="' + (bx + bw / 2) + '" y="' + ((sy(sg.a) + sy(sg.b)) / 2 + 4) + '" font-size="11" font-weight="600" fill="#ffffff" stroke="#0b1220" stroke-opacity="0.45" stroke-width="2.5" paint-order="stroke" text-anchor="middle">' + esc(lbl) + '</text>';
+          });
+        } else if (lastLab && i === n - 1 && colTot > 0) {
+          const labs = segs
+            .map((sg) => ({ y: (sy(sg.a) + sy(sg.b)) / 2 + 4, t: U.truncate(series[sg.k].name, 16) + ' ' + U.fmtPct(Math.abs(sg.v) / colTot, 0), share: Math.abs(sg.v) / colTot }))
+            .filter((l) => l.share >= 0.03)
+            .sort((a, b) => a.y - b.y);
+          // sin encimarse: cada rótulo al menos 13 px bajo el anterior
+          for (let k = 1; k < labs.length; k++) if (labs[k].y - labs[k - 1].y < 13) labs[k].y = labs[k - 1].y + 13;
+          labs.forEach((l) => (g += '<text x="' + (bx + bw + 7) + '" y="' + Math.min(l.y, y1 + 4) + '" font-size="10.5" fill="' + th.ink2 + '">' + esc(l.t) + '</text>'));
+        }
         if (spec.labels !== 'none' && ok(totals[i])) {
           const lbl = C.fmt(totals[i], spec.format);
           if (textW(lbl, 11) <= band - 2) g += '<text x="' + (bx + bw / 2) + '" y="' + (sy(Math.max(0, pos)) - 6) + '" font-size="11" fill="' + th.ink2 + '" text-anchor="middle">' + esc(lbl) + '</text>';
@@ -17712,14 +18357,34 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   /* ---------- flujo de datos ---------- */
   function addSource(src) {
     if (!src.id) src.id = U.uid('src');
+    // una tabla con varias empresas (tabla dinámica con columna "Empresa") se separa en una tabla por empresa
+    if (V.L && V.L.splitEntities) {
+      const before = src.tables.length;
+      src.tables = [].concat(...src.tables.map((r) => {
+        try {
+          return V.L.splitEntities(r);
+        } catch (e) {
+          console.error(e);
+          return [r];
+        }
+      }));
+      if (src.tables.length > before) src.notes.push({ level: 'info', text: 'Una tabla traía varias empresas: se separó en ' + (src.tables.length - before + 1) + ' tablas, una por empresa.' });
+    }
     app.sources.push(src);
+    const added = [];
     for (const raw of src.tables) {
       try {
         const t = S.prepare(raw, src, { locale: app.settings.currency === 'USD' ? 'US' : 'CL' });
         app.tables.push(t);
+        added.push(t);
       } catch (e) {
         src.notes.push({ level: 'error', text: 'No se pudo interpretar "' + raw.name + '": ' + e.message });
       }
+    }
+    try {
+      S.reviewSource(src, added);
+    } catch (e) {
+      console.error(e);
     }
   }
   function textsForReport() {
@@ -17728,6 +18393,59 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     if (app.settings.notes && app.settings.notes.trim()) out.unshift({ source: 'Contexto de la empresa', where: '', text: app.settings.notes.trim() });
     return out;
   }
+  /* varias empresas en los archivos (una tabla dinámica con columna "Empresa", una hoja con el estado de cada
+     sociedad): el análisis es de una sola, porque sumar sus cuentas daría un balance que no existe. Las demás quedan
+     para elegirlas en 1 · Fuentes → La empresa → Empresa a analizar. */
+  const entKey = (s) =>
+    U.norm(s || '')
+      .replace(/\b(s\.?\s?a\.?|spa|s\.p\.a\.?|ltda\.?|limitada|sociedad anonima|eirl|e\.i\.r\.l\.?)(?=\s|$)/g, ' ')
+      .replace(/[^a-z0-9]/g, '');
+  function entityScope() {
+    const fin = (t) => t.enabled && (t.type === 'estados' || t.type === 'balance8');
+    const list = [];
+    const seen = new Set();
+    const addE = (name) => {
+      const k = entKey(name);
+      if (k.length < 3 || seen.has(k)) return k;
+      seen.add(k);
+      list.push({ key: k, name: String(name).trim() });
+      return k;
+    };
+    app.tables.forEach((t) => {
+      t.entityKey = null;
+      if (t.meta && t.meta.entity) t.entityKey = addE(t.meta.entity);
+    });
+    // hojas de cálculo con el nombre de su empresa en el título ("Grandiosa Sociedad Anonima"); en un PDF el nombre
+    // sale del encabezado del documento (un título mal leído no debe crear una segunda empresa)
+    app.tables.forEach((t) => {
+      if (t.entityKey || !fin(t) || !V.ACC || t.origin !== 'sheet') return;
+      const c = V.ACC.companyOf((t.titleLines || []).concat(t.meta && t.meta.title ? [t.meta.title] : []));
+      if (c.name) t.entityKey = addE(c.name);
+    });
+    if (list.length < 2) {
+      app.entities = [];
+      return null;
+    }
+    // una hoja sin nombre de empresa reconocible ("ESF Bajamar", título "Bajamar") se asocia por su título u hoja
+    app.tables.forEach((t) => {
+      if (t.entityKey || !fin(t)) return;
+      const ctx = entKey((t.titleLines || []).join(' ') + ' ' + ((t.meta && t.meta.sheet) || '') + ' ' + (t.name || ''));
+      const hit = list.filter((e) => ctx.indexOf(e.key) >= 0).sort((a, b) => b.key.length - a.key.length)[0];
+      if (hit) t.entityKey = hit.key;
+    });
+    app.entities = list;
+    return list.find((x) => x.key === app.settings.entity) || list[0];
+  }
+  function fillEntity() {
+    const wrap = $('#f-entity-wrap');
+    if (!wrap) return;
+    const list = app.entities || [];
+    wrap.hidden = list.length < 2;
+    if (list.length < 2) return;
+    const sel = app.entitySel ? app.entitySel.key : '';
+    $('#f-entity').innerHTML = list.map((e) => '<option value="' + esc(e.key) + '"' + (e.key === sel ? ' selected' : '') + '>' + esc(U.companyCase(e.name)) + '</option>').join('');
+  }
+
   // nunca deja la app en un estado roto: si un archivo trae algo inesperado, se informa y se sigue
   function recompute(keepAI) {
     try {
@@ -17754,9 +18472,12 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (!s.f22) s.f22 = V.L && V.L.f22FromTexts ? V.L.f22FromTexts(s.texts) : [];
       s.f22.forEach((x) => f22.push(x));
     });
-    const settings = { currency: app.settings.currency, country: app.settings.country, fixes: app.settings.fixes, overrides: app.settings.overrides, today: U.today(), f22 };
-    app.model = V.M.build(app.tables, settings);
-    app.Q = V.Q.assess(app.model, app.tables);
+    // varias empresas: solo las tablas de la elegida (y las que no son de ninguna en particular)
+    app.entitySel = entityScope();
+    const scoped = app.entitySel ? app.tables.filter((t) => !t.entityKey || t.entityKey === app.entitySel.key) : app.tables;
+    const settings = { currency: app.settings.currency, country: app.settings.country, fixes: app.settings.fixes, overrides: app.settings.overrides, today: U.today(), f22, closeDate: app.settings.closeDate || '', entities: app.entitySel ? { list: app.entities.map((e) => e.name), selected: app.entitySel.name } : null };
+    app.model = V.M.build(scoped, settings);
+    app.Q = V.Q.assess(app.model, scoped);
     if (!app.model.sales.length) {
       app.R = null;
       app.rep = null;
@@ -17812,6 +18533,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     else if (app.view === 'asistente') renderChat();
   }
   function renderAll() {
+    fillEntity();
     renderSources();
     renderView();
     $('#btn-go-report').disabled = !app.rep;
@@ -17894,18 +18616,20 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   function autoProfile() {
     if (app.demo || !app.model) return null;
     let lg = app.model.ledger;
-    if ((!lg || !lg.company) && V.ACC) {
-      for (const t of app.tables.filter((x) => x.enabled && (x.type === 'estados' || x.type === 'balance8'))) {
-        const c = V.ACC.companyOf((t.titleLines || []).concat(t.meta && t.meta.title ? [t.meta.title] : []));
+    // carpeta tributaria del SII (portada) o encabezado que se repite en las páginas del PDF: es la fuente más
+    // confiable del nombre; los títulos de una tabla suelta se usan solo si no hay otra
+    const sc = app.sources.find((x) => x.company && x.company.name && app.tables.some((t) => t.sourceId === x.id && t.enabled));
+    // varias empresas: el perfil es el de la que se está analizando
+    if (app.entitySel && (!lg || !lg.company || entKey(lg.company) !== app.entitySel.key)) lg = { company: app.entitySel.name, rut: null, giro: null };
+    if ((!lg || !lg.company) && V.ACC && !sc) {
+      for (const t of app.tables.filter((x) => x.enabled && (x.type === 'estados' || x.type === 'balance8') && (!app.entitySel || !x.entityKey || x.entityKey === app.entitySel.key))) {
+        const c = V.ACC.companyOf((t.meta && t.meta.entity ? [t.meta.entity] : []).concat(t.titleLines || []).concat(t.meta && t.meta.title ? [t.meta.title] : []).concat((t.meta && t.meta.pageHead) || []));
         if (c.name) {
           lg = Object.assign({}, lg || {}, { company: c.name, rut: c.rut || (lg && lg.rut) || null, giro: c.giro || (lg && lg.giro) || null });
           break;
         }
       }
     }
-    // carpeta tributaria del SII: el nombre y la actividad vienen en su portada (la actividad completa también
-    // lo que el balance no trae)
-    const sc = app.sources.find((x) => x.company && x.company.name);
     if (sc && (!lg || !lg.company)) lg = Object.assign({}, lg || {}, { company: sc.company.name, rut: sc.company.rut || null, giro: sc.company.giro || (lg && lg.giro) || null });
     else if (sc && sc.company.giro && lg && !lg.giro) lg = Object.assign({}, lg, { giro: sc.company.giro });
     const bank = !!(app.model.meta && app.model.meta.bank);
@@ -17934,7 +18658,12 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       }
     }
     // industria: la del giro (o banca si los estados son de un banco); la de otra empresa no sirve
-    const g = bank ? 'banca' : lg ? V.I.guess(lg.giro) : null;
+    // sin giro (estados IFRS, balances en Excel), el nombre de la empresa y sus líneas de ingresos también orientan
+    // ("Televisión Nacional de Chile", "Ingresos por publicidad en televisión abierta")
+    const revLabels = (app.model.statements && app.model.statements.items ? app.model.statements.items.filter((i) => i.key === 'rev' && !i.isTotal).map((i) => i.label) : []).slice(0, 12).join(' · ');
+    // ("venta de servicios" en una línea de ingresos no dice que sea comercio: ese caso no se deduce de ahí)
+    const gRev = ((x) => (x === 'retail_especializado' ? null : x))(V.I.guess(revLabels));
+    const g = bank ? 'banca' : (lg && (V.I.guess(lg.giro) || V.I.guess(lg.company))) || gRev;
     const ind = app.settings.industry;
     if (g && g !== ind && (!ind || ind === 'otra' || other || (bank && app.settings.industryAuto !== false) || app.settings.industryAuto === true)) {
       app.settings.industry = g;
@@ -17960,6 +18689,11 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     app.ai.prices = null;
     app.chat = [];
     app.settings.overrides = { expenses: {} };
+    // la empresa elegida y la fecha de cierre indicada eran de los archivos anteriores
+    app.settings.entity = '';
+    app.settings.closeDate = '';
+    app.entities = [];
+    app.entitySel = null;
   }
   // al pasar de la empresa de ejemplo a datos propios, el perfil vuelve al del usuario (o queda en blanco)
   function leaveDemo() {
@@ -18007,6 +18741,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     $('#f-country').value = app.settings.country;
     $('#f-currency').value = app.settings.currency;
     $('#f-notes').value = app.settings.notes || '';
+    $('#f-close').value = app.settings.closeDate || '';
   }
   function saveProfile() {
     if (app.demo) return;
@@ -18297,6 +19032,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const o = cleanPrefs(st) || {};
     if (!isObj(st)) return o;
     if (typeof st.notes === 'string') o.notes = st.notes.slice(0, 5000);
+    if (typeof st.closeDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(st.closeDate)) o.closeDate = st.closeDate;
+    if (typeof st.entity === 'string' && /^[a-z0-9]{1,200}$/.test(st.entity)) o.entity = st.entity;
     if (isObj(st.period)) {
       const pr = { mode: ['auto', 'all', 'year', 'ytd', 'l12m', 'custom'].includes(st.period.mode) ? st.period.mode : 'auto' };
       if (typeof st.period.year === 'number' && st.period.year > 1990 && st.period.year < 2100) pr.year = st.period.year;
@@ -18360,6 +19097,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           ? s.tables.slice(0, 500).filter((t) => isObj(t) && Array.isArray(t.grid)).map((t) => ({ name: txt(t.name, 300) || 'Tabla', grid: t.grid.slice(0, 500000).map((r) => (Array.isArray(r) ? r.slice(0, 300).map(cleanCell) : [])), meta: isObj(t.meta) ? cleanPlain(t.meta, 3) : {} }))
           : [],
         company: isObj(s.company) ? { name: txt(s.company.name, 200), rut: txt(s.company.rut, 20), giro: txt(s.company.giro, 300) } : null,
+        fileDate: typeof s.fileDate === 'number' && isFinite(s.fileDate) && s.fileDate > 0 ? s.fileDate : null,
       });
     });
     (Array.isArray(obj.tableConfigs) ? obj.tableConfigs : []).slice(0, 2000).forEach((c) => {
@@ -18401,7 +19139,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       savedAt: new Date().toISOString(),
       settings: app.settings,
       demo: app.demo,
-      sources: app.sources.map((s) => ({ name: s.name, kind: s.kind, size: s.size, texts: s.texts, notes: s.notes, tables: s.tables, company: s.company || null })),
+      sources: app.sources.map((s) => ({ name: s.name, kind: s.kind, size: s.size, texts: s.texts, notes: s.notes, tables: s.tables, company: s.company || null, fileDate: s.fileDate || null })),
       tableConfigs: app.tables.map((t) => ({ source: t.sourceName, name: t.name, type: t.type, mapping: t.mapping, enabled: t.enabled, user: !!t.userType, userMap: !!t.userMap })),
       ai: app.ai.report,
       aiPrices: app.ai.prices,
@@ -18414,7 +19152,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     app.settings.fixes = Object.assign({}, V.M.DEFAULT_FIXES, (obj.settings && obj.settings.fixes) || {});
     app.settings.overrides = (obj.settings && obj.settings.overrides) || { expenses: {} };
     app.demo = !!obj.demo;
-    (obj.sources || []).forEach((s) => addSource({ id: U.uid('src'), name: s.name, kind: s.kind, size: s.size || 0, texts: s.texts || [], notes: s.notes || [], tables: s.tables || [], company: s.company || null, blobs: [] }));
+    (obj.sources || []).forEach((s) => addSource({ id: U.uid('src'), name: s.name, kind: s.kind, size: s.size || 0, texts: s.texts || [], notes: s.notes || [], tables: s.tables || [], company: s.company || null, fileDate: typeof s.fileDate === 'number' ? s.fileDate : null, blobs: [] }));
     // desde la versión 2 solo se restaura lo que eligió el usuario: el resto lo decide el lector actual, que puede haber
     // mejorado. Las sesiones antiguas no lo distinguen: se respetan, salvo una tabla que antes quedó como "otro" y que
     // ahora se reconoce como estados financieros o balance.
@@ -18632,6 +19370,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       app.settings.country = $('#f-country').value;
       app.settings.currency = $('#f-currency').value;
       app.settings.notes = $('#f-notes').value;
+      app.settings.closeDate = /^\d{4}-\d{2}-\d{2}$/.test($('#f-close').value) ? $('#f-close').value : '';
       saveProfile();
       recomputeSoon();
       saveSessionSoon();
@@ -18639,7 +19378,17 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     $('#f-company').addEventListener('input', () => (app.settings.companyAuto = false));
     $('#f-industry').addEventListener('change', () => (app.settings.industryAuto = false));
     ['#f-company', '#f-notes'].forEach((s) => $(s).addEventListener('input', U.debounce(prof, 500)));
-    ['#f-industry', '#f-country', '#f-currency'].forEach((s) => $(s).addEventListener('change', prof));
+    ['#f-industry', '#f-country', '#f-currency', '#f-close'].forEach((s) => $(s).addEventListener('change', prof));
+    // varias empresas en los archivos: cuál se analiza
+    $('#f-entity').addEventListener('change', () => {
+      app.settings.entity = $('#f-entity').value;
+      app.settings.companyAuto = true;
+      recompute();
+      const pmsg = autoProfile();
+      renderAll();
+      if (pmsg) toast(pmsg, 5000);
+      saveSessionSoon();
+    });
     // delegación general
     document.addEventListener('change', (e) => {
       const el = e.target;
