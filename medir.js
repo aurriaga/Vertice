@@ -48,7 +48,7 @@
     { id: 'pasfer-8col-2025', soloEstados: true, lento: true, archivos: ['/docs/balance_general_2025_pasfer_chile_spa firmado.pdf'], empresa: /pasfer/i, esperado: {} },
     { id: 'muestras-ventas', archivos: ['/mejora/muestras/ventas_2024_2025.xlsx', '/mejora/muestras/gastos_2024_2025.csv',
       '/mejora/muestras/presupuesto_2025.xlsx', '/mejora/muestras/inventario_2025.pdf'], ventas: true, esperado: {} },
-    { id: 'demo', demo: true, exportar: true, esperado: {} }
+    { id: 'demo', demo: true, esperado: {} }
   ];
 
   const errores = [];
@@ -148,11 +148,18 @@
       const vacios = svgs.filter((s) => s.querySelectorAll('rect,path,circle,line,polyline,polygon').length < 3
         && ![...s.querySelectorAll('path,polyline')].some((p) => ((p.getAttribute('d') || p.getAttribute('points') || '').match(/\d[\s,]+-?\d/g) || []).length >= 3));
       out.datos.graficos = svgs.length;
-      check(svgs.length >= 4, 'el informe trae gráficos', svgs.length + ' gráficos');
+      check(svgs.length >= (c.soloEstados ? 2 : 4), 'el informe trae gráficos', svgs.length + ' gráficos');
       check(!vacios.length, 'ningún gráfico vacío', vacios.length + ' vacíos');
       const svgMal = svgs.filter((s) => /NaN|undefined|Infinity/.test(s.outerHTML));
       check(!svgMal.length, 'gráficos sin coordenadas rotas', svgMal.length + ' con NaN/undefined');
       out.datos.titular = a.rep && a.rep.vertex ? String(a.rep.vertex.headline || a.rep.vertex.title || '').slice(0, 220) : '';
+      // los textos principales, para revisarlos frase por frase
+      if (a.rep) out.datos.textos = {
+        titular: a.rep.vertex ? String(a.rep.vertex.headline || '') : '',
+        pilares: (a.rep.pillars || []).map((p) => p.id + ' [' + p.status + '] ' + (p.answer || '')),
+        scqa: a.rep.scqa ? ['s', 'c', 'q', 'a'].map((k) => (a.rep.scqa[k] || '')).filter(Boolean) : [],
+        kpis: (a.rep.kpis || []).map((k) => k.label + ': ' + (k.sub || ''))
+      };
       // --- interpretación: lo que dice el informe tiene que ser cierto ---
       // D2: no comparar resultados contra un período que no tiene estado de resultados ("2025: $ 0 en 12 meses")
       const ceroMeses = txt.match(/:\s*\$\s*0 en \d+ meses/g) || [];

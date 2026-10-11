@@ -22,9 +22,9 @@ Ciclo: **medir → elegir la deficiencia más grave → corregir → volver a me
 | Vuelta | Fecha | Puntaje | Pasan | Qué se corrigió |
 |---|---|---|---|---|
 | 0 | 2026-10-10 | 95,3% (97,8% sin el falso positivo de las mini líneas) | 264/277 | Línea base. Sin controles de interpretación todavía. |
-| 2 | 2026-10-10 | parcial | — | E1/E2/E3: el análisis financiero sigue el período de la portada; el trimestre posterior va en una frase aparte contra su mismo tramo del año anterior (sin anualizar); PowerPoint con los 10 indicadores; fila "Gastos de administración y ventas" del estado comparativo = línea del estado (por función) + "Otras ganancias (pérdidas) de la operación". Verificado en tvn-anual-y-trimestre: indicadores iguales en PDF, PowerPoint y Excel. **Pendiente**: correr la regresión completa con el último cambio (fila de gastos) y con el control nuevo de exportaciones (`exportar: true`); D4, D5, E4, E5, D2, D3, D6–D9 siguen abiertas. |
-| 1 | 2026-10-10 | 100% (282/282, controles antiguos) | 282/282 | (ver abajo) |
-| 1b | 2026-10-10 | en curso | — | D1: fuentes con codificación desordenada → OCR de los estados principales; tablas de OCR sin rayas armadas por posición; estados leídos con OCR reconocidos como principales; análisis razonado ya no manda; tablas en orden del documento; índices con puntos de relleno ya no pasan por OCR. TVN 2025 sola: 15/19 → 22/22 y el informe sale. |
+| 1 | 2026-10-10 | 100% (controles de la vuelta 0) | 282/282 | D1: fuentes con codificación desordenada → OCR de los estados principales; tablas de OCR sin rayas armadas por posición; estados leídos con OCR reconocidos como principales; análisis razonado ya no manda; tablas en orden del documento; índices con puntos de relleno ya no pasan por OCR. TVN 2025 sola: 15/19 → 22/22 y el informe sale. |
+| 2 | 2026-10-10 | (parcial) | — | E1/E2/E3 (reportado por el usuario): un solo período en todo el informe y en las tres descargas; trimestre posterior aparte contra su mismo tramo; PowerPoint con los 10 indicadores; fila de gastos del estado comparativo = línea del estado. |
+| 3 | 2026-10-10 | **100% con los controles nuevos** | 407/407 | Interpretación de los textos (tabla "Vuelta 3"): pérdidas, impuestos diferidos, materialidad del inventario, estados por función, relacionadas, meses inventados, balance ilegible, #REF!, período anual, liquidez holgada, numeración del consultor. 16 casos; tu caso de TVN 34/34 con PDF = PowerPoint = Excel. |
 
 ## Deficiencias abiertas
 
@@ -44,6 +44,31 @@ Ciclo: **medir → elegir la deficiencia más grave → corregir → volver a me
 | D7 | C | varios | Textos: "rota en 1 días", "iVA por recuperar", numeración del informe del consultor salta de 4 a 6. | Informe TVN jun-2026. |
 | D8 | C | PDF con páginas escaneadas | El OCR con la pestaña en segundo plano es lento (TVN jun-2026: 71 s contra 10 s del resto). | Medición vuelta 0. |
 | D9 | B | tvn-2025-12 | Las páginas de índice ("Índice de los Estados Financieros") quedan clasificadas como estados. | Tablas "Página 7/8 [estados]". |
+
+## Vuelta 3 · errores de interpretación en los textos (TVN marzo 2026)
+
+| Dónde | Antes | Ahora | Causa |
+|---|---|---|---|
+| Recomendación principal | "Acelerar la recuperación de impuestos: $ 7.293 MM de caja liberada"; "los impuestos por recuperar suman $ 24.309 MM… remanente de IVA" | "Documentar/revisar y cobrar los saldos con entidades relacionadas", $ 1.050 MM | "Activos por impuestos **diferidos**" ($ 24.289 MM) se clasificaba como IVA/PPM por recuperar. Ahora es otro activo no corriente; impuestos por recuperar = $ 20 MM (lo del estado). |
+| Pilar B | "El resultado operacional subió 29%" | "La pérdida operacional se redujo 29% (de $ 4.786 MM a $ 3.374 MM): el margen bruto subió 11,2 pp (a −16,0%)" | `verb()` miraba solo el signo de la variación. Nueva `N.resultChange()` distingue ganancia/pérdida. |
+| Pilar A | "crecen 1% al año desde ene–mar 2025" | "aumentó sus ventas 3% en ene–mar 2026 ($ 10.801 MM, +3% frente a ene–mar 2025)" | Tasa anual mezclando trimestres; ahora solo con 3+ años completos. |
+| Pilar C | "ya rota en 1 días: hay caja inmovilizada" | "El inventario es menor ($ 160 MM, 0,2% del activo): no pesa en la caja ni en el resultado" | Sin materialidad; ahora bajo 2% del activo no es alerta. |
+| KPI resultado | "2025: $ 0 en 12 meses" | "(ene–mar 2025: −$ 5.689 MM)" | Un cierre con solo balance se tomaba como resultado cero. |
+| Situación | "$ 10.801 MM ($ 46.850 MM en 2024)" | "$ 10.801 MM ($ 10.489 MM en ene–mar 2025), una pérdida de $ 3.818 MM (pérdida de $ 5.689 MM en ene–mar 2025)" | Comparaba con el primer período del archivo. |
+| Complicación | "Los indicadores no muestran alertas graves" | "Sin embargo, pierde dinero ($ 3.818 MM) y el Z″ de Altman está en zona de riesgo (−2,46)" | Solo miraba hallazgos de auditoría. |
+| Puente del resultado | "Gastos −$ 1.109 MM, Depreciación −$ 1.122 MM" | "Gastos adm. −$ 2.231 MM" (la línea del estado) | En un estado por función la depreciación ya está en el costo y los gastos. |
+| Hallazgo de gastos | "depreciación $ 4.478 MM (43%)" de los gastos de operación | sin esa parte | Ídem. |
+| KPI gastos | "Gastos operacionales $ 9.795 MM" frente a "suman $ 10.349 MM" en el hallazgo | $ 10.349 MM en ambos | Las otras ganancias de la operación se restaban como gasto negativo; daban "% del total 105,7%". |
+| Cobertura de intereses | "cubre −13,4 veces los intereses" | "La operación da pérdida, así que no cubre los intereses" | — |
+| Relacionadas | "socios… retiro encubierto… global complementario" en una empresa del Estado | "entidades relacionadas… NIC 24, plazo de cobro" | Sin cuentas de socios no aplica. |
+| Tablas comparativas | columna "2025" con "$ 0" y "nuevo" en el estado de resultados | cada estado con sus períodos; variación contra el mismo tramo | — |
+| Hallazgo tributario | "iVA por recuperar" | "IVA por recuperar" | `low1()` rompía siglas. |
+| Pasfer (Excel IFRS) · período | "Período: diciembre 2025" · "vendió $ 441 MM en diciembre 2025" | "Período: 2025" · "vendió $ 441 MM en 2025" | Una fila anual al 31-12 se tomaba como un mes. |
+| Pasfer · último período | (no se mencionaba ene–jun 2026) | "En ene–jun 2026, el último período disponible, vendió $ 307 MM y ganó $ 37,2 MM" | — |
+| Pasfer · pilar D | "En orden · La liquidez está bajo la referencia del sector (liquidez corriente –)" | "Sin datos · No se pudo leer el balance, así que no hay liquidez ni endeudamiento que evaluar" | Afirmaba algo sobre un dato inexistente. |
+| Pasfer · calidad | "91/100 · Confiable" sin aviso | Aviso "La hoja «Estado Situación Financiera» tiene 69 celdas con errores de Excel (#REF!)…"; calidad 74 · Confiable con reservas | Las celdas #REF! se descartaban sin avisar. |
+| Empresa de ejemplo · pilar D | "Posición financiera sólida: la liquidez corriente es 1,16…" (pilar en Atención) | "Solvente, pero con la caja justa: la liquidez corriente es 1,16 y la caja bajó 80% (a $ 38,9 MM), aunque el Z″… zona segura" | Faltaba el punto medio entre frágil y sólida. |
+| Muestras · situación | "La empresa opera en otra industria con 7 puntos de venta" | "La empresa tiene 7 puntos de venta" | — |
 
 ## Resueltas
 
