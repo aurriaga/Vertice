@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-c4M4Tu3PMDifZWmxo7Z+iLixLWzd2Q5u8CcvIG9SvJ0=' 'sha256-xt4na1z3dOrwAuPX2E4ZddoGCl6LjoVjV3ar+4ryZpI=' 'sha256-gN70gthHiFfJyxdbUQLgjpy2WcvpUuV+t/mk/Em6URE=' 'sha256-RGaAAQ4XtW85HANKHMn+8tnzGNGWbeIU7WsgPmd8xMM=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-c4M4Tu3PMDifZWmxo7Z+iLixLWzd2Q5u8CcvIG9SvJ0=' 'sha256-xt4na1z3dOrwAuPX2E4ZddoGCl6LjoVjV3ar+4ryZpI=' 'sha256-B8TgFNJNkeCfwcd+YRyUhhy3kZ0ypSntLan3CitzbLA=' 'sha256-RGaAAQ4XtW85HANKHMn+8tnzGNGWbeIU7WsgPmd8xMM=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; manifest-src 'self'">
 <meta name="referrer" content="no-referrer">
 <script>(function(){try{if(window.top!==window.self&&window.top.location.origin!==location.origin)throw 0;}catch(e){document.documentElement.style.display='none';try{window.top.location=location.href;}catch(e2){}}})();</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -9787,9 +9787,14 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   ];
   const INC_LINES = [
     ['rev', 'Ingresos de actividades ordinarias', 1], ['cogs', 'Costo de ventas', 0, -1], ['gp', 'Ganancia bruta', 1],
-    ['payrollExp', 'Remuneraciones', 0, -1], ['fees', 'Honorarios y asesorías', 0, -1], ['rent', 'Arriendos', 0, -1], ['opexOther', 'Otros gastos de administración', 0, -1], ['sgaOnly', 'Gastos de administración y ventas', 0, -1], ['dep', 'Depreciación', 0, -1],
+    ['payrollExp', 'Remuneraciones', 0, -1], ['fees', 'Honorarios y asesorías', 0, -1], ['rent', 'Arriendos', 0, -1], ['opexOther', 'Otros gastos de administración', 0, -1], ['sgaOnly', 'Gastos de administración y ventas', 0, -1], ['othOp', 'Otras ganancias (pérdidas) de la operación', 0], ['dep', 'Depreciación', 0, -1],
     ['ebit', 'Resultado operacional', 1], ['othinc', 'Otros ingresos', 0], ['othexp', 'Otros gastos (multas y otros)', 0, -1], ['int', 'Gastos financieros', 0, -1], ['ebt', 'Resultado antes de impuesto', 1], ['tax', 'Impuesto a la renta', 0, -1], ['ni', 'RESULTADO DEL EJERCICIO', 2], ['ebitda', 'EBITDA (memo)', 3],
   ];
+  // estado de resultados por función (el formato IFRS: "Gasto de administración", con la depreciación dentro del costo y
+  // de los gastos): la fila es la línea del estado, lo que falta para llegar al resultado operacional va en su propia
+  // fila y la depreciación no se resta otra vez. Antes la fila "Gastos de administración y ventas" era un cálculo
+  // (gastos − otras ganancias − depreciación) que no coincidía con el estado ni con la tabla de gastos
+  const porFuncion = (f) => has(f.sga) && Math.abs(f.sga) > 0.5 && !f.payrollExp && !f.fees && !f.opexOther && !f.dist && !f.sgv && has(f.gp) && has(f.ebit);
   F.statementTable = function (fin, kind) {
     const ps = fin.periods;
     const lines = kind === 'bal' ? BAL_LINES : INC_LINES;
@@ -9801,7 +9806,13 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       ps.forEach((p) => {
         const f = fin.fig[p];
         let v = f[k];
-        if (k === 'sgaOnly') v = f.payrollExp || f.fees || f.opexOther ? null : f.opex - nz(f.dep);
+        const pf = kind !== 'bal' && porFuncion(f);
+        if (k === 'sgaOnly') v = pf ? Math.abs(f.sga) : f.payrollExp || f.fees || f.opexOther ? null : f.opex - nz(f.dep);
+        if (k === 'othOp') {
+          v = pf ? f.ebit - f.gp + Math.abs(f.sga) : null;
+          if (has(v) && Math.abs(v) <= Math.max(0.5, Math.abs(f.rev || 0) * 0.0005)) v = null;
+        }
+        if (k === 'dep' && pf) v = null;
         if (k === 'tle') v = f.tl + f.eq;
         vals[p] = has(v) ? v : null;
         if (has(v) && Math.abs(v) > 0.5) any = true;
@@ -9871,7 +9882,42 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       return !ps.some((q) => q !== p && info[q] && info[q].from && info[q].from <= a.from && info[q].to > a.to && U.ymd(info[q].to)[0] === U.ymd(a.to)[0]);
     });
     if (!ps.length) return null;
-    const fin = { periods: ps, fig: {}, raw: {}, info: st.info || {}, detail: st.detail || {}, country: ctx.country || 'CL', currency: U.currency.code };
+    // tramo comparable de un período parcial: el mismo del año anterior (ene–mar 2026 → ene–mar 2025). Comparar un
+    // trimestre contra el año completo anterior, anualizado, engaña: TVN vendió +3% en ene–mar 2026 frente a ene–mar
+    // 2025, pero "al ritmo anual" daba −10% contra 2025
+    const tramo = (p) => {
+      const a = info[p];
+      if (!a || !a.to) return null;
+      const [y, m] = U.ymd(a.to);
+      return { y, m, months: (st.fig[p] && st.fig[p].months) || a.months || 12 };
+    };
+    const comparable = (p) => {
+      const t = tramo(p);
+      if (!t || t.months >= 12) return null;
+      return st.periods.find((q) => {
+        const u = tramo(q);
+        return u && u.y === t.y - 1 && u.m === t.m && u.months === t.months && st.fig[q] && has(st.fig[q].rev);
+      }) || null;
+    };
+    // el período del informe manda: el análisis financiero termina en el período de la portada ("2025 vs 2024"), para
+    // que indicadores, mensaje, informe del consultor y las tres exportaciones hablen del mismo año. Lo que viene después
+    // (el trimestre de 2026 cargado junto al anual 2025) se comenta aparte, contra su mismo tramo del año anterior
+    let later = [];
+    if (ctx.P && ctx.P.cur && ctx.P.cur.toKey) {
+      const i = ps.findIndex((p) => info[p] && info[p].to && U.monthKey(info[p].to) === ctx.P.cur.toKey);
+      if (i >= 0 && i < ps.length - 1) {
+        later = ps.slice(i + 1);
+        ps = ps.slice(0, i + 1);
+      }
+    }
+    const fin = { periods: ps, fig: {}, raw: {}, info: st.info || {}, detail: st.detail || {}, country: ctx.country || 'CL', currency: U.currency.code, comp: {}, figComp: {} };
+    ps.concat(later).forEach((p) => {
+      const q = comparable(p);
+      if (!q) return;
+      fin.comp[p] = q;
+      fin.figComp[q] = F.norm(st.fig[q]);
+    });
+    fin.later = later.filter((p) => st.fig[p]).map((p) => ({ label: p, fig: F.norm(st.fig[p]), comp: fin.comp[p] || null }));
     ps.forEach((p) => {
       fin.raw[p] = st.fig[p];
       fin.fig[p] = F.norm(st.fig[p]);
@@ -9981,6 +10027,13 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     fin.growth = { byPeriod: {}, last: null, cagr: null };
     ps.forEach((p, i) => i > 0 && revs[i - 1] > 0 && (fin.growth.byPeriod[p] = revs[i] / revs[i - 1] - 1));
     if (fin.prev) fin.growth.last = fin.growth.byPeriod[fin.last] !== undefined ? fin.growth.byPeriod[fin.last] : null;
+    // un período parcial se compara con su mismo tramo del año anterior, si está en los archivos
+    const cmpL = fin.comp[fin.last] && fin.figComp[fin.comp[fin.last]];
+    if (cmpL && cmpL.rev > 0 && fin.fig[fin.last].rev > 0) {
+      fin.growth.byPeriod[fin.last] = fin.fig[fin.last].rev / cmpL.rev - 1;
+      fin.growth.last = fin.growth.byPeriod[fin.last];
+      fin.growth.lastVs = fin.comp[fin.last];
+    }
     const firstPos = revs.findIndex((r) => r > 0);
     if (firstPos >= 0 && ps.length - 1 - firstPos >= 2 && revs[revs.length - 1] > 0) fin.growth.cagr = Math.pow(revs[revs.length - 1] / revs[firstPos], 1 / (ps.length - 1 - firstPos)) - 1;
     // flujos de caja entre balances consecutivos
@@ -12429,17 +12482,34 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const x = FIN.f29 && FIN.f29[p];
     const partial = (f.months || 12) < 12;
     const samePrev = String(p).replace(/(19|20)\d{2}/, (y) => String(+y - 1));
+    // el mismo tramo del año anterior, si vino en los archivos (ene–mar 2025 para ene–mar 2026)
+    const fc = FIN.comp && FIN.comp[p] ? FIN.figComp[FIN.comp[p]] : null;
     if (x && x.diff > x.sii * 0.2) return 'declaró al SII ventas por ' + f$(x.sii) + ' en ' + p + (x.growth !== null ? ' (' + fP(x.growth, 0) + ' frente a ' + samePrev + ')' : '');
+    if (partial && fc && fc.rev > 0 && f.rev > 0) return 'registró ingresos por ' + f$(f.rev) + ' en ' + p + ' (' + monthsTxt(f) + '), ' + fP(f.rev / fc.rev - 1, 0) + ' frente a ' + FIN.comp[p] + ' (' + f$(fc.rev) + ')';
     if (partial) return 'registró ingresos por ' + f$(f.rev) + ' en ' + p + ' (' + monthsTxt(f) + ')' + (x && x.growth !== null ? ', ' + fP(x.growth, 0) + ' frente a ' + samePrev : a0 && a0.rev > 0 ? '; al ritmo anual equivalen a ' + f$(a1.rev) + ' (' + fP(a1.rev / a0.rev - 1, 0) + ' vs ' + FIN.prev + ')' : '');
     if (a0 && a0.rev > 0 && a1.rev > 0) return N.growthWords(a1.rev / a0.rev) + ' en ' + p + ' (' + f$(f.rev) + ')';
     return f.rev ? 'vendió ' + f$(f.rev) + ' en ' + p : null;
   };
 
   /* mensaje principal (vértice de la pirámide) desde los estados financieros */
+  /* lo que vino después del período del informe (el trimestre de 2026 cargado junto al anual 2025), contra su mismo
+     tramo del año anterior: una frase aparte, para que no se mezcle con las cifras del año analizado */
+  N.laterClause = function (FIN) {
+    const L = FIN.later && FIN.later[FIN.later.length - 1];
+    if (!L || !L.fig) return '';
+    const f = L.fig;
+    const fc = L.comp ? FIN.figComp[L.comp] : null;
+    const parts = [];
+    if (f.rev > 0) parts.push('vendió ' + f$(f.rev) + (fc && fc.rev > 0 ? ' (' + fP(f.rev / fc.rev - 1, 0) + ' frente a ' + L.comp + ')' : ''));
+    if (has(f.ni) && f.ni !== 0) parts.push((f.ni < 0 ? 'perdió ' + f$(-f.ni) : 'ganó ' + f$(f.ni)) + (fc && has(fc.ni) && fc.ni !== 0 ? ' (' + (fc.ni < 0 ? 'pérdida de ' + f$(-fc.ni) : 'utilidad de ' + f$(fc.ni)) + ' en ' + L.comp + ')' : ''));
+    return parts.length ? 'En ' + L.label + ', el último período disponible, ' + U.listJoin(parts) + '.' : '';
+  };
   N.finHeadline = function (FIN, company) {
     const p = FIN.last;
     const f = FIN.fig[p];
-    const f0 = FIN.prev ? FIN.fig[FIN.prev] : null;
+    // resultados de un período parcial: contra el mismo tramo del año anterior si está, no contra el año completo
+    const fcmp = FIN.comp && FIN.comp[p] ? FIN.figComp[FIN.comp[p]] : null;
+    const f0 = fcmp || (FIN.prev ? FIN.fig[FIN.prev] : null);
     const a1 = V.F.annual(f);
     const a0 = f0 ? V.F.annual(f0) : null;
     const sc = N.salesClause(FIN);
@@ -12481,7 +12551,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     let h = company + ' ' + (sc ? sc + (prof ? (contrast ? ', pero ' : ' y ') + prof + why : '') : prof || 'presentó sus estados de ' + p);
     const comp = N.finComplication(FIN, grew);
     if (comp) h += contrast ? '; además, ' + comp.replace(/^pero /, '') : ', ' + comp;
-    return h + '.';
+    const despues = N.laterClause(FIN);
+    return h + '.' + (despues ? ' ' + despues : '');
   };
   /* la complicación principal ("pero …") para el mensaje principal */
   N.finComplication = function (FIN, grew) {
@@ -17179,22 +17250,27 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     s = slide();
     eyebrow(s, 'Estado actual');
     title(s, rep.pillars[0].answer);
-    rep.kpis.slice(0, 8).forEach((k, i) => {
-      const col = i % 4;
-      const row = Math.floor(i / 4);
-      const x = 0.5 + col * 3.1;
+    // los mismos indicadores que el PDF y el Excel (antes se cortaba en 8 y se perdían el resultado y el patrimonio):
+    // hasta 8 en dos filas de 4; más, en dos filas de 5
+    const nK = Math.min(rep.kpis.length, 10);
+    const porFila = nK > 8 ? 5 : 4;
+    const anchoK = (12.35 - (porFila - 1) * 0.15) / porFila;
+    rep.kpis.slice(0, nK).forEach((k, i) => {
+      const col = i % porFila;
+      const row = Math.floor(i / porFila);
+      const x = 0.5 + col * (anchoK + 0.15);
       const y = 1.8 + row * 2.4;
-      s.addShape(pptx.ShapeType.roundRect, { x, y, w: 2.95, h: 2.15, fill: { color: 'FFFFFF' }, line: { color: RULE, width: 1 }, rectRadius: 0.06 });
+      s.addShape(pptx.ShapeType.roundRect, { x, y, w: anchoK, h: 2.15, fill: { color: 'FFFFFF' }, line: { color: RULE, width: 1 }, rectRadius: 0.06 });
       const v = k.fmt === 'money' ? f$(k.value) : k.fmt === 'pct' || k.fmt === 'pct2' ? U.fmtPct(k.value, k.fmt === 'pct2' ? 2 : 1) : U.fmtNum(k.value);
       const dtxt = k.delta === null || k.delta === undefined ? '' : (k.delta > 0 ? '▲ ' : k.delta < 0 ? '▼ ' : '') + (k.deltaFmt === 'pp' ? U.fmtPP(k.delta) : k.deltaFmt === 'pctv' ? U.fmtPct(k.delta, 1, true) + ' vs meta' : U.fmtPct(k.delta, 1, true));
       s.addText(
         [
           { text: k.label, options: { fontSize: 11, bold: true, color: INK2, breakLine: true } },
-          { text: v, options: { fontSize: v.length >= 15 ? 19 : v.length >= 12 ? 22 : 26, bold: true, color: INK, breakLine: true } },
+          { text: v, options: { fontSize: (v.length >= 15 ? 19 : v.length >= 12 ? 22 : 26) - (porFila > 4 ? 3 : 0), bold: true, color: INK, breakLine: true } },
           { text: dtxt || ' ', options: { fontSize: 11, bold: true, color: k.good === null || k.good === undefined ? MUTED : k.good ? '08700A' : 'B3261E', breakLine: true } },
           { text: k.sub || '', options: { fontSize: 9.5, color: MUTED } },
         ],
-        { x: x + 0.15, y: y + 0.12, w: 2.65, h: 1.9, fontFace: FONT, valign: 'top', fit: 'shrink' }
+        { x: x + 0.15, y: y + 0.12, w: anchoK - 0.3, h: 1.9, fontFace: FONT, valign: 'top', fit: 'shrink' }
       );
     });
 
@@ -18574,7 +18650,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     app.bank = null;
     try {
       if (app.model.meta.bank && V.BK) app.bank = V.BK.analyze(app.model);
-      app.fin = V.F && !app.bank ? V.F.analyze(app.model, { country: app.settings.country, currency: app.settings.currency }) : null;
+      // (con el período del informe: el análisis financiero termina en el mismo año que el resto del reporte)
+      app.fin = V.F && !app.bank ? V.F.analyze(app.model, { country: app.settings.country, currency: app.settings.currency, P }) : null;
     } catch (e) {
       console.error(e);
       app.fin = null;

@@ -24,6 +24,11 @@
     { id: 'tvn-2025-03', soloEstados: true, archivos: ['/docs/1-Estados-Financieros-TVN-032025.pdf'], empresa: /televisi[oó]n nacional/i,
       esperado: { 'ene–mar 2025': { ta: 109300323 * M, tl: 83672607 * M, eq: 25627716 * M, rev: 10488822 * M, ni: -5688910 * M },
                   '2024': { ta: 103380615 * M }, 'ene–mar 2024': { rev: 12089545 * M, ni: -5703842 * M } } },
+    // el caso de la exportación del usuario (10-10-2026): el anual 2025 más el trimestre siguiente
+    { id: 'tvn-anual-y-trimestre', soloEstados: true, lento: true, exportar: true, empresa: /televisi[oó]n nacional/i, coherencia: true,
+      archivos: ['/docs/Estados-Financieros-TVN-31-12-2025.pdf', '/docs/Estados-Financieros-TVN-03-2026.pdf'],
+      esperado: { '2025': { ta: 100652868 * M, eq: 14633467 * M, ni: -15528705 * M },
+                  'ene–mar 2026': { ta: 106191715 * M, eq: 10815412 * M, rev: 10801240 * M, ni: -3818055 * M } } },
     { id: 'tvn-todos', soloEstados: true, lento: true, empresa: /televisi[oó]n nacional/i,
       archivos: ['/docs/Estados Financieros TVN al 06-2026.pdf', '/docs/Estados-Financieros-TVN-03-2026.pdf', '/docs/Estados-Financieros-TVN-31-12-2025.pdf',
                  '/docs/Estados_Financieros_TVN-30_09_2025.pdf', '/docs/Estados-Financieros-TVN-junio-2025.pdf', '/docs/1-Estados-Financieros-TVN-032025.pdf'],
@@ -43,7 +48,7 @@
     { id: 'pasfer-8col-2025', soloEstados: true, lento: true, archivos: ['/docs/balance_general_2025_pasfer_chile_spa firmado.pdf'], empresa: /pasfer/i, esperado: {} },
     { id: 'muestras-ventas', archivos: ['/mejora/muestras/ventas_2024_2025.xlsx', '/mejora/muestras/gastos_2024_2025.csv',
       '/mejora/muestras/presupuesto_2025.xlsx', '/mejora/muestras/inventario_2025.pdf'], ventas: true, esperado: {} },
-    { id: 'demo', demo: true, esperado: {} }
+    { id: 'demo', demo: true, exportar: true, esperado: {} }
   ];
 
   const errores = [];
@@ -160,6 +165,14 @@
         const inventados = a.rep.pillars.flatMap((p) => (p.exhibits || []).map((e) => e.title || '')).filter((t) => /mensual|estacionalidad|por mes\b|mes a mes/i.test(t));
         check(!inventados.length, 'no muestra datos mensuales que el documento no trae', inventados.slice(0, 3).join(' | '));
       }
+      // E1: un solo período en todo el informe: el del consultor es el de la portada, y un tramo de meses no se compara
+      // con un año completo ("ene–mar 2026 … ($ 46.850 MM en 2024)", "al ritmo anual … vs 2025")
+      const portada = (txt.match(/Período: ([^\n]+?) vs /) || [])[1];
+      const consultor = (txt.match(/ejercicio ([^\n]+?) comparado con/) || [])[1];
+      if (portada && consultor) check(portada === consultor, 'el informe del consultor usa el período de la portada', 'portada «' + portada + '», consultor «' + consultor + '»');
+      const mezcla = txt.match(/\b(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov)[–-][a-z]{3} \d{4}[^.\n]{0,90}\(\$ ?[\d.,]+ MM en \d{4}\)/g) || [];
+      check(!mezcla.length, 'no compara un tramo de meses con un año completo', mezcla.slice(0, 2).join(' | '));
+      if (c.coherencia) check(!/al ritmo anual equivalen/.test(txt), 'con el mismo tramo del año anterior disponible, no anualiza', '');
       // D5: un "% del total" no puede pasar de 100%
       const sobre100 = [];
       v.querySelectorAll('table').forEach((tb) => {
@@ -186,6 +199,37 @@
         if (f0.ni < 0) check(!(diceGanancia && !dicePerdida), 'el titular es coherente con la pérdida', '«' + out.datos.titular + '»');
       }
     } else check(false, 'se puede abrir el informe');
+
+    // E1: las tres exportaciones dicen lo mismo (los mismos indicadores con los mismos montos, y las mismas tablas)
+    if (c.exportar && a.rep) {
+      try {
+        if (!window.EXP) {
+          const s = document.createElement('script');
+          s.src = '/mejora/exportes.js?' + Date.now();
+          document.head.appendChild(s);
+          await new Promise((r, j) => { s.onload = r; s.onerror = j; });
+        }
+        await EXP.generar();
+        const R = EXP.res;
+        const f$ = (x) => V.U.fmtMoney(x, { compact: true }).replace(/-/g, '−');
+        const plano = (s) => String(s).replace(/[−-]/g, '-').replace(/\s+/g, ' ');
+        const pdf1 = plano(R.pdf.slice(0, 2).flat().join(' '));
+        const kpiL = R.pptx.find((s) => s.texto.some((t) => /^Estado actual$/i.test(t.trim())));
+        const ppt1 = plano(kpiL ? kpiL.texto.join(' ') : '');
+        const res = R.xlsx['Resumen'] || [];
+        const faltan = [];
+        a.rep.kpis.filter((k) => k.fmt === 'money').forEach((k) => {
+          const t = plano(f$(k.value));
+          if (!pdf1.includes(t)) faltan.push(k.label + ' (PDF)');
+          if (!ppt1.includes(t)) faltan.push(k.label + ' (PowerPoint)');
+          const fila = res.find((r) => String(r[0]).trim() === k.label);
+          if (!fila || typeof fila[1] !== 'number' || Math.abs(fila[1] - k.value) > Math.max(1, Math.abs(k.value) * 0.005)) faltan.push(k.label + ' (Excel)');
+        });
+        check(!faltan.length, 'los indicadores son los mismos en PDF, PowerPoint y Excel', faltan.slice(0, 6).join(', '));
+        const dif = EXP.compararPdfPpt();
+        check(!dif.length, 'las tablas del PowerPoint coinciden con las del PDF', dif.slice(0, 2).map((d) => 'L' + d.lamina + '/' + d.pagina + ': ' + d.distintas.map((x) => x.rotulo).join(', ')).join(' | '));
+      } catch (e) { check(false, 'se generan las tres exportaciones', e.message); }
+    }
 
     const nuevos = errores.slice(nErr0);
     check(!nuevos.length, 'sin errores en la consola', nuevos.slice(0, 3).join(' | '));
