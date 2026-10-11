@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-c4M4Tu3PMDifZWmxo7Z+iLixLWzd2Q5u8CcvIG9SvJ0=' 'sha256-xt4na1z3dOrwAuPX2E4ZddoGCl6LjoVjV3ar+4ryZpI=' 'sha256-B8TgFNJNkeCfwcd+YRyUhhy3kZ0ypSntLan3CitzbLA=' 'sha256-RGaAAQ4XtW85HANKHMn+8tnzGNGWbeIU7WsgPmd8xMM=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; manifest-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'sha256-c4M4Tu3PMDifZWmxo7Z+iLixLWzd2Q5u8CcvIG9SvJ0=' 'sha256-5zKX1quRt/gMRJDnYlAYQiCTi+JqusPam/shYm7cJJU=' 'sha256-o791YEgJy5gPx2XVcdMoiThttO53YFXNWe7AbpIzq8U=' 'sha256-RGaAAQ4XtW85HANKHMn+8tnzGNGWbeIU7WsgPmd8xMM=' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'; manifest-src 'self'">
 <meta name="referrer" content="no-referrer">
 <script>(function(){try{if(window.top!==window.self&&window.top.location.origin!==location.origin)throw 0;}catch(e){document.documentElement.style.display='none';try{window.top.location=location.href;}catch(e2){}}})();</script>
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -794,7 +794,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 <div class="busy" id="busy" hidden><div class="box"><b id="busy-text">Procesando…</b><div class="progress"><i></i></div></div></div>
 
-<script>window.V = window.V || {}; V.CONFIG = {"libBase":"vendor/","pwa":true,"version":"2.5.0"};</script>
+<script>window.V = window.V || {}; V.CONFIG = {"libBase":"vendor/","pwa":true,"version":"2.6.0"};</script>
 <script>
 /* ==== 01_util.js ==== */
 /* Vértice · utilidades: formato es-CL, fechas como número de día UTC, estadística, texto */
@@ -1836,6 +1836,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const cols = [];
       for (let c = 0; c <= maxC; c++) cols.push(XLSX.utils.encode_col(c));
       const grid = [];
+      // celdas con error de Excel (#REF!, #N/A, #DIV/0!): se cuentan para avisar; sus cifras no existen en el archivo
+      let errN = 0;
+      const errT = new Set();
       for (let r = 0; r <= maxR; r++) {
         const row = new Array(maxC + 1).fill(null);
         let any = false;
@@ -1852,7 +1855,12 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
             const dt = cell.v instanceof Date ? cell.v : new Date(cell.v);
             v = { d: U.dayFromYMD(dt.getFullYear(), dt.getMonth() + 1, dt.getDate()) };
           } else if (cell.t === 'b') v = cell.v ? 'VERDADERO' : 'FALSO';
-          else if (cell.t === 'e') v = null;
+          else if (cell.t === 'e') {
+            v = null;
+            errN++;
+            // (SheetJS guarda el error como código: 23 es #REF!, 42 es #N/A)
+            errT.add(cell.w || { 0: '#NULL!', 7: '#DIV/0!', 15: '#VALUE!', 23: '#REF!', 29: '#NAME?', 36: '#NUM!', 42: '#N/A' }[cell.v] || '#ERROR');
+          }
           else {
             v = String(cell.v).trim();
             if (v === '') v = null;
@@ -1872,6 +1880,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           for (let c = m.s.c; c <= m.e.c; c++) if (r === m.s.r && c !== m.s.c && grid[r][c] === null) grid[r][c] = { merged: v };
         }
       });
+      if (errN >= 3 && !hidden) src.notes.push({ level: 'warn', text: 'La hoja «' + sn + '» tiene ' + errN + ' celda(s) con errores de Excel (' + Array.from(errT).slice(0, 3).join(', ') + '): son fórmulas rotas y esas cifras no se pudieron leer. Corrige las fórmulas (o pega los valores) y vuelve a cargar el archivo.' });
       const g = trimGrid(grid.map((r) => r.map((v) => (v && v.merged !== undefined ? null : v))));
       // guardar info de merges horizontales para encabezados de dos niveles
       const mergedTop = {};
@@ -1881,7 +1890,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (!g.length) return;
       // dos estados lado a lado (activos | pasivos y patrimonio) se separan en dos tablas
       const blocks = L.splitBlocks(g);
-      blocks.forEach((bg, i) => src.tables.push({ name: sn + (blocks.length > 1 ? ' (' + (i + 1) + ' de ' + blocks.length + ')' : ''), grid: bg, meta: { sheet: sn, origin: 'sheet', hidden: !!hidden, merges: i === 0 ? mergedTop : {} } }));
+      blocks.forEach((bg, i) => src.tables.push({ name: sn + (blocks.length > 1 ? ' (' + (i + 1) + ' de ' + blocks.length + ')' : ''), grid: bg, meta: { sheet: sn, origin: 'sheet', hidden: !!hidden, merges: i === 0 ? mergedTop : {}, xlErrors: errN } }));
     });
     if (!src.tables.length) src.notes.push({ level: 'warn', text: 'El libro no tiene hojas con datos.' });
     return src;
@@ -4415,6 +4424,11 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   S.fsKeyCtx = function (label, side) {
     const k = S.fsKey(label);
     if (!k) return null;
+    // un impuesto diferido al lado de los pasivos es pasivo; en un estado de resultados, parte del impuesto
+    if ((k === 'onca' || k === 'oncl') && /impuestos? diferidos?/.test(U.norm(label))) {
+      if (side === 'inc') return 'tax';
+      if (side === 'liab') return 'oncl';
+    }
     if (side === 'inc') {
       if (k === 'taxliab' || k === 'taxrec') return 'othexp';
       return BAL_ONLY.has(k) && k !== 'ni' ? null : k;
@@ -4442,6 +4456,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (/\bno corrientes?\b|largo plazo/.test(n)) return 'ltdebt';
       if (/\bcorrientes?\b|corto plazo/.test(n)) return 'stdebt';
     }
+    // impuestos diferidos: un activo o pasivo contable de largo plazo (pérdidas tributarias por usar, diferencias
+    // temporales), no IVA ni PPM por recuperar ni impuesto por pagar. Antes "Activos por impuestos diferidos" ($ 24.289 MM
+    // en TVN) se leía como impuestos por recuperar y el informe recomendaba "acelerar su recuperación" como si fuera caja
+    if (/^(activos?|pasivos?) (por )?impuestos? diferidos?\b|^impuestos? diferidos?$/.test(n)) return /^pasivo/.test(n) ? 'oncl' : 'onca';
     // etiquetas cortas y exactas de ingresos
     if (/^(ventas|ingresos|ventas totales|ingresos totales)$/.test(n)) return 'rev';
     // "Resultado del período antes de impuesto a la renta": es el resultado antes de impuestos, aunque diga "del período"
@@ -8098,6 +8116,22 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const m = model.meta;
     const S = model.sales;
 
+    // ---- celdas con errores de Excel (#REF!, #N/A, #DIV/0!): esas cifras no existen en el archivo ----
+    // (PASFER_EEFF_IFRS_2026.xlsx traía todo el estado de situación en #REF! y la calidad salía "Confiable")
+    const ERR_XL = /^#(¡)?(REF|N\/A|VALUE|VALOR|DIV\/0|NAME|NOMBRE|NUM|NULL|NULO)[!?]?$/i;
+    (tables || []).forEach((t) => {
+      if (t.enabled === false && !(t.meta && t.meta.xlErrors)) return;
+      let n = (t.meta && t.meta.xlErrors) || 0;
+      const ej = [];
+      [t.headers || []].concat(t.rows || []).forEach((r) => (r || []).forEach((v) => {
+        if (typeof v === 'string' && ERR_XL.test(v.trim())) {
+          n++;
+          if (ej.length < 3) ej.push(v.trim());
+        }
+      }));
+      if (n >= 3) add({ dataset: t.type === 'estados' ? 'estados' : 'ventas', severity: 'high', dim: 'completitud', title: 'Celdas con errores de Excel en «' + t.name + '»', detail: n + ' celda(s) con errores de Excel' + (ej.length ? ' (' + U.listJoin(U.uniq(ej)) + ')' : '') + ': son fórmulas rotas del archivo (referencias a celdas o hojas que ya no existen) y esas cifras no se pudieron leer. Lo que dependa de ellas falta en el reporte.', count: n, fixText: 'Abre el archivo en Excel, corrige las fórmulas (o pega los valores) y vuelve a cargarlo.' });
+    });
+
     // ---- cobertura temporal de ventas ----
     if (S.length && m.minDay !== null) {
       const k1 = U.monthKey(m.minDay);
@@ -8337,6 +8371,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     out.score = Math.round(Object.keys(W).reduce((s, k) => s + W[k] * dimScore[k], 0));
     // si los propios estados dicen que están incompletos, la nota no pasa de "confiable con reservas"
     if (grave.length) out.score = Math.min(out.score, 82);
+    // con fórmulas rotas en los estados (un balance entero en #REF!) faltan cifras del reporte: tampoco es "confiable"
+    if (out.issues.some((i) => /^Celdas con errores de Excel/.test(i.title) && i.count >= 10)) out.score = Math.min(out.score, 74);
     out.grade = out.score >= 85 ? 'Confiable' : out.score >= 70 ? 'Confiable con reservas' : out.score >= 50 ? 'Usar con cautela' : 'Poco confiable';
     out.gradeKind = out.score >= 85 ? 'good' : out.score >= 70 ? 'warning' : out.score >= 50 ? 'serious' : 'critical';
     const sevRank = { critical: 0, high: 1, medium: 2, low: 3 };
@@ -8374,7 +8410,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const lastKey = U.monthKey(m.maxDay);
     const partialLast = m.lastMonthPartial !== undefined ? m.lastMonthPartial : m.salesGrain === 'day' && m.maxDay < U.monthEnd(lastKey) - 2;
     const lastFull = partialLast ? U.addMonths(lastKey, -1) : lastKey;
-    const firstKey = U.monthKey(m.minDay);
+    // ventas anuales de un estado de resultados (una fila al 31-12): el período es el año completo, no "diciembre 2025"
+    // (antes el informe decía "vendió $ 441 MM en diciembre 2025" con las ventas de todo el año)
+    const soloAnual = model.sales.length > 0 && model.sales.every((r) => r.grain === 'year');
+    const firstKey = soloAnual ? U.monthKey(m.minDay).slice(0, 4) + '-01' : U.monthKey(m.minDay);
     const span = U.monthsBetween(firstKey, lastFull) + 1;
     const mk = (fromKey, toKey) => ({ from: U.monthStart(fromKey), to: U.monthEnd(toKey), fromKey, toKey });
     const label = (p) => {
@@ -8549,11 +8588,14 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (p && model.expenses.length) {
         const ex = model.expenses.filter((r) => r.d !== null && r.d >= p.from && r.d <= p.to);
         const months = new Set(ex.map((r) => U.monthKey(r.d)));
-        out.opex = U.sum(ex, (r) => r.amount);
+        // las "otras ganancias de la operación" de un estado (montos negativos) no son un gasto negativo: los gastos
+        // suman solo gastos, y esas ganancias entran aparte al resultado operacional (que sigue siendo el del estado)
+        out.opex = U.sum(ex.filter((r) => r.amount > 0), (r) => r.amount);
+        out.otherOpGain = -U.sum(ex.filter((r) => r.amount < 0), (r) => r.amount);
         out.expMonths = months.size;
         out.opexRatio = rev ? out.opex / rev : null;
         if (gp !== null) {
-          out.ebit = gp - out.opex;
+          out.ebit = gp - out.opex + out.otherOpGain;
           out.ebitMargin = rev ? out.ebit / rev : null;
         }
       }
@@ -9197,8 +9239,11 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   A.expenses = function (model, P, kpi) {
     if (!P.cur) return null;
     const inP = (r, p) => p && r.d !== null && r.d >= p.from && r.d <= p.to;
-    const e1 = model.expenses.filter((r) => inP(r, P.cur));
-    const e0 = model.expenses.filter((r) => inP(r, P.prev));
+    // las "otras ganancias de la operación" de un estado de resultados no son gastos: se dejan fuera del ranking y de
+    // los porcentajes (antes daban "% del total 105,7%" y bajaban los gastos operacionales)
+    const ganancia = (r) => r.src === 'estados' && r.amount < 0;
+    const e1 = model.expenses.filter((r) => inP(r, P.cur) && !ganancia(r));
+    const e0 = model.expenses.filter((r) => inP(r, P.prev) && !ganancia(r));
     if (!e1.length) return { available: false, reason: 'No hay gastos en el período analizado.' };
     const rev1 = kpi.cur.rev;
     const rev0 = kpi.prev ? kpi.prev.rev : null;
@@ -9796,7 +9841,15 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   // (gastos − otras ganancias − depreciación) que no coincidía con el estado ni con la tabla de gastos
   const porFuncion = (f) => has(f.sga) && Math.abs(f.sga) > 0.5 && !f.payrollExp && !f.fees && !f.opexOther && !f.dist && !f.sgv && has(f.gp) && has(f.ebit);
   F.statementTable = function (fin, kind) {
-    const ps = fin.periods;
+    // cada tabla muestra solo los períodos que traen ese estado: un cierre con solo balance (diciembre 2025 en unos
+    // estados a marzo) no aparece en el estado de resultados con "$ 0" y variación "nuevo", ni un trimestre que solo trae
+    // resultados aparece en el balance con la caja en cero
+    const conDato = (p) => {
+      const r = fin.raw[p] || {};
+      return kind === 'bal' ? has(r.ta) || has(r.tle) : has(r.rev) || has(r.ni) || has(r.ebit);
+    };
+    const ps0 = fin.periods.filter(conDato);
+    const ps = ps0.length ? ps0 : fin.periods;
     const lines = kind === 'bal' ? BAL_LINES : INC_LINES;
     const rows = [];
     lines.forEach(([k, l, lvl, sign]) => {
@@ -9825,7 +9878,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       });
       if (ps.length > 1) {
         const pa = ps[ps.length - 1];
-        const pz = ps[ps.length - 2];
+        // resultados de un tramo se comparan con el mismo tramo del año anterior (ene–mar 2026 con ene–mar 2025)
+        const pz = kind !== 'bal' && fin.comp && fin.comp[pa] && ps.includes(fin.comp[pa]) ? fin.comp[pa] : ps[ps.length - 2];
+        row.vs = pz;
         // resultados de períodos de distinta duración (ene–abr frente a un año completo) no se comparan
         const same = kind === 'bal' || (fin.fig[pa].months || 12) === (fin.fig[pz].months || 12);
         const a = row.vals[pa];
@@ -9835,6 +9890,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       }
       rows.push(row);
     });
+    // los períodos de la tabla (las columnas): quien la dibuja usa estos y no todos los del análisis
+    rows.periods = ps;
     return rows;
   };
 
@@ -10328,7 +10385,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           return Math.abs(b.v - a.v) < Math.max(1, Math.abs(b.v) * 0.05) ? '' : ' (al ' + U.fmtDate(a.to) + ' eran ' + f$(a.v) + ')';
         };
         const relTxt = U.listJoin([pS ? 'los socios deben ' + f$(pS) + was(partners) : '', oS ? (others.length === 1 ? 'la cuenta «' + U.truncate(others[0].label, 50) + '» suma ' : 'las empresas relacionadas deben ') + f$(oS) + was(others) : ''].filter(Boolean));
-        A({ id: 'rel', sev: tot > f.ta * 0.05 || (f.eq > 0 && tot > f.eq * 0.3) ? 'high' : 'medium', short: 'socios y relacionadas deben ' + f$(tot) + ' a la empresa', area: 'Socios y tributario', title: 'Cuentas por cobrar a socios y relacionadas: ' + f$(tot), detail: relTxt.charAt(0).toUpperCase() + relTxt.slice(1) + '. Son el ' + fp(tot / f.ta, 0) + ' del activo' + (f.eq > 0 ? ' y el ' + fp(tot / f.eq, 0) + ' del patrimonio' : '') + '. Las NIIF para PYMES (sección 33) exigen revelar estas operaciones. En impuestos, si el SII concluye que un préstamo a un socio es un retiro encubierto, el socio paga impuesto global complementario sobre el monto con un recargo de 10% (art. 21 de la Ley de la Renta), y las operaciones con relacionadas deben pactarse a valor de mercado (el SII puede tasarlas: art. 64 del Código Tributario).', action: 'Documentar cada saldo (contrato o mutuo, tasa y calendario de pago), cobrarlo o capitalizarlo, y revelarlo en las notas.', impact: tot });
+        // sin cuentas de socios ("Cuentas por cobrar a entidades relacionadas" de una sociedad anónima o una empresa del
+        // Estado), no se habla de socios ni de retiros encubiertos: son saldos con otras empresas del grupo
+        const conSocios = pS > 0;
+        A({ id: 'rel', sev: tot > f.ta * 0.05 || (f.eq > 0 && tot > f.eq * 0.3) ? 'high' : 'medium', short: (conSocios ? 'socios y relacionadas deben ' : 'las entidades relacionadas deben ') + f$(tot) + ' a la empresa', area: conSocios ? 'Socios y tributario' : 'Relacionadas', title: (conSocios ? 'Cuentas por cobrar a socios y relacionadas: ' : 'Cuentas por cobrar a entidades relacionadas: ') + f$(tot), detail: relTxt.charAt(0).toUpperCase() + relTxt.slice(1) + '. Son el ' + fp(tot / f.ta, 0) + ' del activo' + (f.eq > 0 ? ' y el ' + fp(tot / f.eq, 0) + ' del patrimonio' : '') + '.' + (conSocios ? ' Las NIIF para PYMES (sección 33) exigen revelar estas operaciones. En impuestos, si el SII concluye que un préstamo a un socio es un retiro encubierto, el socio paga impuesto global complementario sobre el monto con un recargo de 10% (art. 21 de la Ley de la Renta), y las operaciones con relacionadas deben pactarse a valor de mercado (el SII puede tasarlas: art. 64 del Código Tributario).' : ' Las operaciones con relacionadas deben pactarse a valor de mercado y revelarse en las notas (NIC 24); conviene revisar su plazo de cobro, porque es caja que la empresa no tiene disponible.'), action: conSocios ? 'Documentar cada saldo (contrato o mutuo, tasa y calendario de pago), cobrarlo o capitalizarlo, y revelarlo en las notas.' : 'Revisar el plazo y las condiciones de cobro de cada saldo con las relacionadas y cobrar lo vencido.', impact: tot });
       }
     }
     // 16) saldos con el signo contrario (clientes acreedores, pasivos deudores)
@@ -11381,6 +11441,20 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   const fN = (x, d) => U.fmtNum(x, d || 0);
   const fA = (x, d) => U.fmtPct(Math.abs(x), d === undefined ? 1 : d); // porcentaje sin signo, para usar después de un verbo
   const verb = (x, up, down, flat) => (x === null || x === undefined ? flat || 'se mantuvo' : x > 0.005 ? up : x < -0.005 ? down : flat || 'se mantuvo');
+  /* Variación de un resultado que puede ser pérdida, con los dos montos. "El resultado operacional subió 22%" de una
+     pérdida que pasó de −$ 16.237 MM a −$ 12.660 MM se lee como una ganancia que creció: se dice que la pérdida se
+     redujo. nombre: 'operacional' o 'del ejercicio'; a = período anterior, b = actual */
+  const okN = (x) => x !== null && x !== undefined && isFinite(x);
+  N.resultChange = function (nombre, a, b) {
+    if (!okN(b)) return null;
+    if (!okN(a) || a === 0) return (b < 0 ? 'la pérdida ' : 'el resultado ') + nombre + ' fue de ' + f$(Math.abs(b));
+    const ch = Math.abs(b - a) / Math.abs(a);
+    if (a > 0 && b > 0) return 'el resultado ' + nombre + ' ' + (b > a * 1.005 ? 'subió ' + fA(ch, 0) : b < a * 0.995 ? 'cayó ' + fA(ch, 0) : 'se mantuvo') + ' (de ' + f$(a) + ' a ' + f$(b) + ')';
+    if (a < 0 && b < 0) return 'la pérdida ' + nombre + ' ' + (-b < -a * 0.995 ? 'se redujo ' + fA(ch, 0) : -b > -a * 1.005 ? 'aumentó ' + fA(ch, 0) : 'se mantuvo') + ' (de ' + f$(-a) + ' a ' + f$(-b) + ')';
+    if (a < 0) return 'el resultado ' + nombre + ' pasó de una pérdida de ' + f$(-a) + ' a una ganancia de ' + f$(b);
+    return 'el resultado ' + nombre + ' pasó de una ganancia de ' + f$(a) + ' a una pérdida de ' + f$(-b);
+  };
+  const cap1 = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
 
   N.PILLARS = [
     { id: 'A', name: 'Ingresos y mercado', q: '¿Cuánto, qué, dónde y cuándo vendemos, y a qué precio frente al mercado?' },
@@ -11429,6 +11503,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const FIN = ctx.fin || null;
     const BKA = ctx.bank || null; // estados financieros de un banco
     const curL = P.cur ? P.cur.label : '';
+    // solo totales de estados financieros (un año o un tramo como ene–mar): no hay meses, así que no hay gráficos
+    // mensuales ni de estacionalidad (antes se repartía el total y se dibujaban meses que el documento no trae)
+    const soloTotales = model.sales.length > 0 && model.sales.every((r) => r.src === 'estados' || r.grain === 'year' || r.grain === 'ytd');
     const prevL = P.prev ? P.prev.label : '';
     const findings = [];
     const actions = [];
@@ -11495,7 +11572,14 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const sameLen = g0 && (g1.months || 12) === (g0.months || 12);
       const preTaxNi = !g1.tax && FIN.raw[FIN.last] && FIN.raw[FIN.last].ebt !== null && FIN.raw[FIN.last].ebt !== undefined && !(FIN.raw[FIN.last].tax > 0);
       const niLabel = ((g1.months || 12) < 12 ? 'Resultado de ' + FIN.last : 'Resultado del ejercicio') + (preTaxNi ? ' (antes de impuesto)' : '');
-      if (g1.rev || g1.ni) tile('ni', niLabel, g1.ni, 'money', sameLen && g0.ni ? (g1.ni - g0.ni) / Math.abs(g0.ni) : null, 'pct', sameLen ? g1.ni >= g0.ni : null, 'margen neto ' + fp(g1.rev ? g1.ni / g1.rev : null) + (g0 ? (sameLen ? ' (antes ' + f$(g0.ni) + ')' : ' · ' + FIN.prev + ': ' + f$(g0.ni) + ' en ' + (g0.months || 12) + ' meses') : ''));
+      // el resultado se compara con el mismo tramo del año anterior (ene–mar 2025) o con el año anterior si dura lo
+      // mismo; un período anterior que solo trae balance no tiene resultado (antes salía "2025: $ 0 en 12 meses")
+      const gc = FIN.comp && FIN.comp[FIN.last] ? FIN.figComp[FIN.comp[FIN.last]] : null;
+      const rawP = FIN.prev ? FIN.raw[FIN.prev] : null;
+      const prevInc = g0 && rawP && (okN(rawP.ni) || okN(rawP.rev)) ? g0 : null;
+      const gN = gc || (sameLen ? prevInc : null);
+      const lN = gc ? FIN.comp[FIN.last] : FIN.prev;
+      if (g1.rev || g1.ni) tile('ni', niLabel, g1.ni, 'money', gN && gN.ni ? (g1.ni - gN.ni) / Math.abs(gN.ni) : null, 'pct', gN ? g1.ni >= gN.ni : null, 'margen neto ' + fp(g1.rev ? g1.ni / g1.rev : null) + (gN ? ' (' + lN + ': ' + f$(gN.ni) + ')' : prevInc ? ' · ' + FIN.prev + ': ' + f$(g0.ni) + ' en ' + (g0.months || 12) + ' meses' : ''));
       tile('eq', 'Patrimonio', g1.eq, 'money', g0 && g0.eq ? (g1.eq - g0.eq) / Math.abs(g0.eq) : null, 'pct', g0 ? g1.eq >= g0.eq : null, fp(FIN.k[FIN.last].eqRatio, 0) + ' del activo · pasivo ' + f$(g1.tl));
     }
     rep.kpis = kpis;
@@ -11758,7 +11842,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       }
       if (c.ebit !== undefined && c.ebit !== null) {
         const dE = d.ebit ? d.ebit.pct : null;
-        F({ id: 'B-ebit', pillar: 'B', tone: dE !== null && dE < -0.05 ? 'neg' : dE !== null && dE > 0.05 ? 'pos' : 'neu', score: dE !== null ? Math.min(95, 55 + Math.abs(dE) * 80) : 40, text: 'El resultado operacional ' + (dE !== null ? verb(dE, 'subió ' + fA(dE), 'cayó ' + fA(dE), 'se mantuvo') + ' a ' : 'es ') + f$(c.ebit) + ' (margen ' + fp(c.ebitMargin) + (p && p.ebitMargin !== undefined ? ' vs ' + fp(p.ebitMargin) : '') + ').' });
+        F({ id: 'B-ebit', pillar: 'B', tone: dE !== null && dE < -0.05 ? 'neg' : dE !== null && dE > 0.05 ? 'pos' : 'neu', score: dE !== null ? Math.min(95, 55 + Math.abs(dE) * 80) : 40, text: (dE !== null && p && okN(p.ebit) ? cap1(N.resultChange('operacional', p.ebit, c.ebit)) : (c.ebit < 0 ? 'La pérdida operacional es de ' + f$(-c.ebit) : 'El resultado operacional es ' + f$(c.ebit))) + ', con un margen de ' + fp(c.ebitMargin) + (p && p.ebitMargin !== undefined ? ' frente a ' + fp(p.ebitMargin) : '') + '.' });
       }
       if (E.breakEven) {
         const be = E.breakEven;
@@ -11857,10 +11941,12 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         const dio0 = g0 && g0.inv && a0 && a0.cogs ? (g0.inv / a0.cogs) * 365 : null;
         const fromZero = g0 && !g0.inv && g1.inv > 0;
         const frozen = !!(FIN && FIN.audit.some((a) => a.id === 'inv-frozen'));
-        const worse = fromZero || frozen || (di !== null && dr !== null && di > dr + 0.1) || (dio1 !== null && dio0 !== null && dio1 > dio0 + 10) || (dio1 !== null && dio1 > 180);
+        // un inventario que no llega al 2% del activo no es una alerta, aunque crezca (TVN: $ 175 MM de $ 106.192 MM)
+        const menor = g1.ta > 0 && g1.inv / g1.ta < 0.02;
+        const worse = frozen || (!menor && (fromZero || (di !== null && dr !== null && di > dr + 0.1) || (dio1 !== null && dio0 !== null && dio1 > dio0 + 10) || (dio1 !== null && dio1 > 180)));
         const ref = R.ctx && R.ctx.industry && R.ctx.industry.inv ? R.ctx.industry.inv : null;
         ivBal = { di, dr, dio1, dio0, worse, fromZero, frozen, value: g1.inv, per: per1, prevPer: per0 };
-        F({ id: 'C-bal', pillar: 'C', tone: worse ? 'neg' : 'neu', score: frozen ? 66 : worse ? 58 : 35, text: 'Inventario del balance al cierre de ' + per1 + ': ' + f$(g1.inv) + (fromZero ? ' (el año anterior no había inventario)' : frozen ? ' (el mismo monto que en ' + per0 + ': no se ha vuelto a contar)' : di !== null ? ' (' + fP(di) + ' vs ' + per0 + (dr !== null ? ', con ventas ' + fP(dr) : '') + ')' : '') + (dio1 !== null ? '; equivale a ' + fN(dio1) + ' días de costo de ventas' + (dio0 !== null ? ' (antes ' + fN(dio0) + ')' : '') : '') + '.' });
+        F({ id: 'C-bal', pillar: 'C', tone: worse ? 'neg' : 'neu', score: frozen ? 66 : worse ? 58 : 35, text: 'Inventario del balance al cierre de ' + per1 + ': ' + f$(g1.inv) + (fromZero ? ' (el año anterior no había inventario)' : frozen ? ' (el mismo monto que en ' + per0 + ': no se ha vuelto a contar)' : di !== null ? ' (' + fP(di) + ' vs ' + per0 + (dr !== null ? ', con ventas ' + fP(dr) : '') + ')' : '') + (dio1 !== null ? '; equivale a ' + fN(dio1) + (Math.round(dio1) === 1 ? ' día' : ' días') + ' de costo de ventas' + (dio0 !== null ? ' (antes ' + fN(dio0) + ')' : '') : '') + '.' });
         if (worse && !frozen && !(FIN && FIN.audit.some((a) => a.id === 'inv'))) {
           why.C.push('El inventario crece más rápido que las ventas: se está comprando o produciendo por sobre la demanda, lo que inmoviliza caja.');
           ACT({ pillar: 'C', option: 'eficiencia', title: 'Ajustar compras al ritmo de ventas', detail: 'Revisar el inventario por producto (qué no rota), fijar topes de compra por categoría y liquidar lo lento hasta volver a ' + (dio0 !== null ? fN(dio0) : 'los') + ' días de rotación.', area: 'Operaciones y Finanzas', horizon: 60, impact: null, cash: dio1 !== null && dio0 !== null && dio1 > dio0 ? (g1.inv * (dio1 - dio0)) / dio1 * 0.5 : g1.inv * 0.05, impactText: 'libera caja atrapada en inventario', kpi: 'Días de inventario' });
@@ -11902,7 +11988,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       const debitda = byId.debitda;
       const lev = byId.lev;
       if (icr || debitda || lev) {
-        F({ id: 'D-debt', pillar: 'D', tone: (icr && icr.status !== 'good') || (debitda && debitda.status !== 'good') ? 'neg' : 'neu', score: icr && icr.status === 'critical' ? 80 : icr && icr.status === 'warning' ? 55 : 35, text: (lev ? 'Pasivo/patrimonio ' + rfmt(lev, lev.v1) + '. ' : '') + (debitda && debitda.v1 !== null ? 'Deuda financiera/EBITDA ' + rfmt(debitda, debitda.v1) + (debitda.v0 !== null ? ' (antes ' + rfmt(debitda, debitda.v0) + ')' : '') + '. ' : '') + (icr && icr.v1 !== null ? 'El resultado operacional cubre ' + fN(icr.v1, 1) + ' veces los intereses' + (icr.v0 !== null ? ' (antes ' + fN(icr.v0, 1) + ')' : '') + '.' : '') });
+        F({ id: 'D-debt', pillar: 'D', tone: (icr && icr.status !== 'good') || (debitda && debitda.status !== 'good') ? 'neg' : 'neu', score: icr && icr.status === 'critical' ? 80 : icr && icr.status === 'warning' ? 55 : 35, text: (lev ? 'Pasivo/patrimonio ' + rfmt(lev, lev.v1) + '. ' : '') + (debitda && debitda.v1 !== null ? 'Deuda financiera/EBITDA ' + rfmt(debitda, debitda.v1) + (debitda.v0 !== null ? ' (antes ' + rfmt(debitda, debitda.v0) + ')' : '') + '. ' : '') + (icr && icr.v1 !== null ? (icr.v1 < 0 ? 'La operación da pérdida, así que no cubre los intereses: se pagan con caja o con más deuda.' : 'El resultado operacional cubre ' + fN(icr.v1, 1) + ' veces los intereses' + (icr.v0 !== null ? (icr.v0 < 0 ? ' (antes la operación daba pérdida)' : ' (antes ' + fN(icr.v0, 1) + ')') : '') + '.') : '') });
         if (icr && icr.v1 !== null && icr.status !== 'good') RISK({ id: 'icr', pillar: 'D', title: 'Menor holgura para pagar intereses', detail: 'Cobertura de intereses ' + fN(icr.v1, 1) + ' veces' + (icr.v0 !== null ? ' (antes ' + fN(icr.v0, 1) + ')' : '') + '.', prob: 2, impact: 3, kpi: 'Cobertura de intereses', action: 'Evitar nueva deuda de corto plazo; refinanciar a plazo más largo.' });
       }
       const roe = byId.roe;
@@ -11962,10 +12048,18 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     }
     if (FIN && FIN.hasIncome && model.meta.fromStatements) {
       const q1 = FIN.fig[FIN.last];
-      const q0 = FIN.prev ? FIN.fig[FIN.prev] : null;
-      const r = q0 && q0.rev > 0 ? V.F.annual(q1).rev / V.F.annual(q0).rev : null;
-      let h = r ? 'La empresa ' + N.growthWords(r) + ' en ' + FIN.last + ' (' + f$(q1.rev) + ', ' + fP(r - 1, 0) + ')' : 'Las ventas de ' + FIN.last + ' suman ' + f$(q1.rev);
-      if (FIN.growth.cagr !== null && FIN.periods.length >= 3) h += (r ? ', que crecen ' : ' y crecen ') + fp(FIN.growth.cagr, 0) + ' al año desde ' + FIN.periods.find((x) => FIN.fig[x].rev > 0);
+      // un período parcial se compara con su mismo tramo del año anterior; un año, con el año anterior si trae ventas
+      const qc = FIN.comp && FIN.comp[FIN.last] ? FIN.figComp[FIN.comp[FIN.last]] : null;
+      const q0 = qc || (FIN.prev ? FIN.fig[FIN.prev] : null);
+      const r = qc && qc.rev > 0 ? q1.rev / qc.rev : q0 && q0.rev > 0 ? V.F.annual(q1).rev / V.F.annual(q0).rev : null;
+      let h = r ? 'La empresa ' + N.growthWords(r) + ' en ' + FIN.last + ' (' + f$(q1.rev) + ', ' + fP(r - 1, 0) + (qc ? ' frente a ' + FIN.comp[FIN.last] : '') + ')' : 'Las ventas de ' + FIN.last + ' suman ' + f$(q1.rev);
+      // crecimiento anual compuesto: solo con tres o más años completos (antes mezclaba trimestres: "crecen 1% al año
+      // desde ene–mar 2025")
+      const anuales = FIN.periods.filter((x) => (FIN.fig[x].months || 12) >= 12 && FIN.fig[x].rev > 0);
+      if (anuales.length >= 3) {
+        const cg = Math.pow(FIN.fig[anuales[anuales.length - 1]].rev / FIN.fig[anuales[0]].rev, 1 / (anuales.length - 1)) - 1;
+        h += (r ? '; entre ' : '. Entre ') + anuales[0] + ' y ' + anuales[anuales.length - 1] + ' crecieron ' + fp(cg, 0) + ' al año';
+      }
       const ex = FIN.k[FIN.last].exportShare;
       if (ex) h += '; cerca del ' + fp(ex, 0) + ' se factura a clientes extranjeros';
       heads.A = h + '.';
@@ -11975,7 +12069,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       let h;
       if (c.gm !== null && p && p.gm !== null && c.ebit !== undefined && c.ebit !== null && p.ebit !== undefined) {
         const dpp = c.gm - p.gm;
-        h = 'El resultado operacional ' + verb(d.ebit ? d.ebit.pct : 0, 'subió ' + fA(d.ebit ? d.ebit.pct : 0), 'cayó ' + fA(d.ebit ? d.ebit.pct : 0), 'se mantuvo') + ' porque ' + (dpp < -0.005 ? 'el margen bruto bajó ' + fPP(dpp).replace('−', '') : dpp > 0.005 ? 'el margen bruto subió ' + fPP(dpp).replace('+', '') : 'el margen bruto se mantuvo') + (E && E.dPct !== null && E.revG !== null && E.dPct > E.revG + 0.01 ? ' y los gastos crecieron ' + fA(E.dPct) + ', más que las ventas' : '');
+        // (con pérdidas, se dice si la pérdida se achicó o creció; el margen bruto se nombra con su valor, no solo su cambio)
+        const mb = (x) => 'el margen bruto ' + (x < -0.005 ? 'bajó ' + fPP(x).replace('−', '') : x > 0.005 ? 'subió ' + fPP(x).replace('+', '') : 'se mantuvo') + ' (a ' + fp(c.gm) + ')';
+        h = cap1(N.resultChange('operacional', p.ebit, c.ebit)) + (Math.abs(dpp) > 0.005 || !(E && E.dPct !== null && E.revG !== null && E.dPct > E.revG + 0.01) ? ': ' + mb(dpp) : '') + (E && E.dPct !== null && E.revG !== null && E.dPct > E.revG + 0.01 ? (Math.abs(dpp) > 0.005 ? ' y ' : ': ') + 'los gastos crecieron ' + fA(E.dPct) + ', más que las ventas (' + fP(E.revG) + ')' : '');
       } else if (c.gm !== null && p && p.gm !== null) h = 'El margen bruto ' + verb(c.gm - p.gm, 'subió', 'bajó') + ' a ' + fp(c.gm) + ' (' + fPP(c.gm - p.gm) + ')';
       else if (E) h = 'Los gastos operacionales suman ' + f$(E.total1) + ' (' + fp(E.ratio1) + ' de las ventas)';
       else if (FIN && FIN.hasIncome && FIN.periods.some((q) => FIN.fig[q].cogs > 0 && FIN.k[q] && FIN.k[q].gm !== null && FIN.k[q].gm !== undefined)) {
@@ -11999,22 +12095,29 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         else if (over.length) h = f$(U.sum(over, (r) => r.value || 0)) + ' del inventario está inmovilizado en productos lentos o fuera de temporada';
         else h = 'El inventario está equilibrado: ' + (IV.dio ? fN(IV.dio) + ' días de venta' : f$(IV.total));
       } else if (ivBal) {
-        h = ivBal.fromZero
-          ? 'Apareció un inventario de ' + f$(ivBal.value) + (ivBal.dio1 !== null ? ', equivalente a ' + fN(ivBal.dio1) + ' días de costo de ventas' : '') + ': es la mayor caja inmovilizada de la empresa'
+        // materialidad: un inventario que no llega al 2% del activo no inmoviliza caja que importe (TVN: $ 175 MM de
+        // $ 106.192 MM). Antes decía "ya rota en 1 días: hay caja inmovilizada"
+        const taIv = FIN && FIN.fig[FIN.last] ? FIN.fig[FIN.last].ta : null;
+        const dias = (n) => fN(n) + (Math.round(n) === 1 ? ' día' : ' días');
+        if (taIv > 0 && ivBal.value >= 0 && ivBal.value / taIv < 0.02 && !ivBal.frozen) h = 'El inventario es menor (' + f$(ivBal.value) + ', ' + fp(ivBal.value / taIv, 1) + ' del activo): no pesa en la caja ni en el resultado';
+        else h = ivBal.fromZero
+          ? 'Apareció un inventario de ' + f$(ivBal.value) + (ivBal.dio1 !== null ? ', equivalente a ' + dias(ivBal.dio1) + ' de costo de ventas' : '') + ': es la mayor caja inmovilizada de la empresa'
           : ivBal.frozen
             ? 'El inventario (' + f$(ivBal.value) + ') no se ha contado desde ' + (ivBal.prevPer || 'el cierre anterior') + ': mientras no se valorice, el costo de ventas y el margen del período no son confiables'
             : ivBal.di !== null && ivBal.dr !== null && ivBal.di > ivBal.dr + 0.1
-              ? 'El inventario crece más rápido que las ventas (' + fP(ivBal.di, 0) + ' vs ' + fP(ivBal.dr, 0) + ')' + (ivBal.dio1 !== null ? ' y ya rota en ' + fN(ivBal.dio1) + ' días' : '') + ': hay caja inmovilizada'
+              ? 'El inventario crece más rápido que las ventas (' + fP(ivBal.di, 0) + ' vs ' + fP(ivBal.dr, 0) + ')' + (ivBal.dio1 !== null ? ' y equivale a ' + dias(ivBal.dio1) + ' de costo de ventas' : '') + ': hay caja inmovilizada'
               : ivBal.worse
-                ? 'El inventario inmoviliza caja: ' + f$(ivBal.value) + (ivBal.dio1 !== null ? ', equivalente a ' + fN(ivBal.dio1) + ' días de costo de ventas' : '')
-                : 'El inventario del balance acompaña a las ventas' + (ivBal.dio1 !== null ? ': rota en ' + fN(ivBal.dio1) + ' días' : '');
+                ? 'El inventario inmoviliza caja: ' + f$(ivBal.value) + (ivBal.dio1 !== null ? ', equivalente a ' + dias(ivBal.dio1) + ' de costo de ventas' : '')
+                : 'El inventario del balance acompaña a las ventas' + (ivBal.dio1 !== null ? ': equivale a ' + dias(ivBal.dio1) + ' de costo de ventas' : '');
       } else h = 'No hay datos de inventario: carga un corte de stock para evaluar quiebres y sobre-stock';
       heads.C = h + '.';
     }
     // D
     {
       let h;
-      if (RT.fromStatements && byId.liq) {
+      // sin balance legible no hay liquidez que evaluar (antes: "la liquidez está bajo la referencia (liquidez corriente –)")
+      if (RT.fromStatements && byId.liq && (byId.liq.v1 === null || byId.liq.v1 === undefined)) h = 'No se pudo leer el balance, así que no hay liquidez ni endeudamiento que evaluar: carga el estado de situación financiera con sus cifras';
+      else if (RT.fromStatements && byId.liq) {
         const liq = byId.liq;
         const tight = liq.status !== 'good' || (byId.acida && byId.acida.status !== 'good') || (byId.caja && byId.caja.status === 'critical');
         const worse = liq.v0 !== null && liq.v1 < liq.v0;
@@ -12029,7 +12132,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         const sup = FIN.audit.find((a) => a.id === 'suppliers');
         const bits = [];
         if (sup) bits.push('los proveedores financian el ' + fp(q.ap / q.ta, 0) + ' del activo');
-        if (kq.liq !== null) bits.push('la liquidez corriente es ' + fN(kq.liq, 2));
+        // una liquidez holgada (1,5 o más) no es un signo de fragilidad: va al final, como contrapeso
+        const liqHolgada = kq.liq !== null && kq.liq >= 1.5;
+        if (kq.liq !== null && !liqHolgada) bits.push('la liquidez corriente es ' + fN(kq.liq, 2));
         if (q.eq > 0 && kq.eqRatio !== null && kq.eqRatio < 0.3) bits.push('el patrimonio es apenas el ' + fp(kq.eqRatio, 0) + ' del activo');
         else if (q.eq <= 0) bits.push('el patrimonio es negativo');
         // sin costo de ventas en el último período, su Z″ está inflado: se usa el del período anterior
@@ -12038,8 +12143,19 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         const weak = sup || (kq.liq !== null && kq.liq < 1) || q.eq <= 0 || (zRef && zRef.z.zone !== 'segura') || FIN.audit.some((a) => (a.id === 'susp' || a.id === 'rel') && a.sev === 'high');
         const ctrl = FIN.audit.filter((a) => (a.id === 'susp' || a.id === 'rel') && a.sev === 'high');
         if (ctrl.length) bits.push(f$(U.sum(ctrl, (a) => a.impact)) + ' del activo están en cuentas por conciliar o con socios y relacionadas');
-        if (zRef) bits.push((weak && zRef.z.zone === 'segura' ? 'aunque ' : '') + 'el Z″ de Altman ' + (zRef.p ? 'de ' + zRef.p + ' ' : '') + 'está en zona ' + zRef.z.zone + ' (' + fN(zRef.z.z, 2) + ')');
-        if (bits.length) h = (weak ? 'Solvencia frágil: ' : 'Posición financiera sólida: ') + (weak && zRef && zRef.z.zone === 'segura' && bits.length > 1 ? U.listJoin(bits.slice(0, -1)) + ', ' + bits[bits.length - 1] : U.listJoin(bits));
+        // punto medio entre "frágil" y "sólida": liquidez entre 1 y 1,2 o la caja cayendo a menos de la mitad (antes una
+        // liquidez de 1,16 con la caja −80% se llamaba "posición financiera sólida")
+        const q0c = FIN.prev ? FIN.fig[FIN.prev] : null;
+        const caidaCaja = q0c && q0c.cash > 0 && okN(q.cash) ? q.cash / q0c.cash - 1 : null;
+        const justa = !weak && ((kq.liq !== null && kq.liq < 1.2) || (caidaCaja !== null && caidaCaja < -0.5));
+        if (justa && caidaCaja !== null && caidaCaja < -0.5) bits.splice(bits.length ? 1 : 0, 0, 'la caja bajó ' + fp(-caidaCaja, 0) + ' (a ' + f$(q.cash) + ')');
+        if (zRef) bits.push(((weak || justa) && zRef.z.zone === 'segura' ? 'aunque ' : '') + 'el Z″ de Altman ' + (zRef.p ? 'de ' + zRef.p + ' ' : '') + 'está en zona ' + zRef.z.zone + ' (' + fN(zRef.z.z, 2) + ')');
+        if (liqHolgada) {
+          if (weak && bits.length) bits.push('aunque la liquidez corriente es holgada (' + fN(kq.liq, 2) + ')');
+          else bits.unshift('la liquidez corriente es ' + fN(kq.liq, 2));
+        }
+        const conAunque = bits.length > 1 && /^aunque /.test(bits[bits.length - 1]);
+        if (bits.length) h = (weak ? 'Solvencia frágil: ' : justa ? 'Solvente, pero con la caja justa: ' : 'Posición financiera sólida: ') + (conAunque ? U.listJoin(bits.slice(0, -1)) + ', ' + bits[bits.length - 1] : U.listJoin(bits));
       }
       heads.D = h + '.';
     }
@@ -12091,7 +12207,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     // A · comparación entre años (primero la película larga: ventas por año, mes a mes y acumuladas)
     if (N.yearSales && model.meta.salesGrain !== 'year') N.yearSales(model, R, ex);
     // A-1 ingresos mensuales
-    if (R.monthly.length >= 3 && P.cur && model.meta.salesGrain !== 'year') {
+    if (R.monthly.length >= 3 && P.cur && model.meta.salesGrain !== 'year' && !soloTotales) {
       const curMonths = U.monthRange(P.cur.fromKey, P.cur.toKey);
       const byKey = new Map(R.monthly.map((m) => [m.key, m]));
       const curVals = curMonths.map((k) => (byKey.get(k) && byKey.get(k).salesMonth && !byKey.get(k).partial ? byKey.get(k).rev : null));
@@ -12123,7 +12239,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     }
     if (R.topByPeriod) ex('A', { kind: 'topByPeriod', title: 'Producto más vendido por período', caption: 'Por ingresos y por unidades. Cambia la pestaña para ver año, semestre, trimestre, mes o semana.', data: R.topByPeriod });
     if (R.dates) ex('A', { kind: 'dates', title: 'Fechas de mayor y menor venta', caption: 'Días con tiendas abiertas; los feriados de cierre obligatorio se informan aparte.', data: R.dates });
-    if (R.season && R.season.heat && R.season.heat.length) ex('A', { kind: 'chart', title: 'Estacionalidad: ventas por mes y año', caption: 'Tono más marcado = más ventas. ' + (R.season.method ? 'Índice estacional calculado con ' + R.season.method + '.' : ''), spec: { type: 'heatmap', rows: R.season.heat.map((h) => h.year), cols: U.MONTHS_SHORT, values: R.season.heat.map((h) => h.vals), index: R.season.index, format: 'money' } });
+    if (R.season && R.season.heat && R.season.heat.length && !soloTotales) ex('A', { kind: 'chart', title: 'Estacionalidad: ventas por mes y año', caption: 'Tono más marcado = más ventas. ' + (R.season.method ? 'Índice estacional calculado con ' + R.season.method + '.' : ''), spec: { type: 'heatmap', rows: R.season.heat.map((h) => h.year), cols: U.MONTHS_SHORT, values: R.season.heat.map((h) => h.vals), index: R.season.index, format: 'money' } });
     if (R.season && R.season.events.length) {
       const evs = R.season.events.slice(0, 8);
       ex('A', { kind: 'chart', title: 'Efecto de las fechas comerciales en la venta diaria', caption: 'Venta diaria promedio durante cada fecha frente a las 4 semanas previas.', spec: { type: 'bars', orientation: 'h', categories: evs.map((e) => e.name), series: [{ name: 'Alza de venta diaria', role: 'diverge', values: evs.map((e) => e.uplift) }], format: 'pct', diverging: true } });
@@ -12140,7 +12256,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     // B, C y D · estados financieros y ratios por año, antes del detalle del período
     if (FIN && N.yearFin && !BKA) N.yearFin(FIN, ex);
     // B
-    if (R.monthly.some((m) => m.gm !== null) && P.cur) {
+    if (R.monthly.some((m) => m.gm !== null) && P.cur && !soloTotales) {
       const curMonths = U.monthRange(P.cur.fromKey, P.cur.toKey);
       const byKey = new Map(R.monthly.map((m) => [m.key, m]));
       const s1 = curMonths.map((k) => (byKey.get(k) && byKey.get(k).gm !== null ? byKey.get(k).gm : null));
@@ -12196,13 +12312,16 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         name: pl.name,
         question: pl.q,
         answer: heads[pl.id],
-        status: statusOf(fs),
+        // sin balance legible la solidez no se puede evaluar: "Sin datos", no "En orden"
+        status: pl.id === 'D' && /^No se pudo leer el balance/.test(heads.D || '') ? 'na' : statusOf(fs),
         findings: fs.slice(0, 7),
         why: why[pl.id],
         risks: rs,
         actions: acts,
         exhibits: exhibits[pl.id],
-        missing: BKA ? [] : Q.gaps.filter((g) => ({ A: ['ventas', 'cantidad', 'sucursal', 'producto', 'dia', 'presupuesto', 'competencia'], B: ['costo', 'gastos'], C: ['inventario'], D: ['estados'] }[pl.id].includes(g.id))),
+        // con solo estados financieros, la lista de seis datos (unidades, sucursal, producto…) es ruido: basta con decir
+        // qué cargar para completar el pilar
+        missing: BKA ? [] : soloTotales && pl.id === 'A' ? [{ need: 'Detalle de ventas', impact: 'con solo estados financieros no hay análisis por producto, cliente, sucursal ni mes; carga el registro de ventas o el libro de ventas del SII para completarlo' }] : Q.gaps.filter((g) => ({ A: ['ventas', 'cantidad', 'sucursal', 'producto', 'dia', 'presupuesto', 'competencia'], B: ['costo', 'gastos'], C: ['inventario'], D: ['estados'] }[pl.id].includes(g.id))),
       };
     });
 
@@ -12308,6 +12427,11 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (top) head += '; lo más relevante: ' + lc1(top.text.split(/(?<=\.)\s/)[0].replace(/\.$/, ''));
     }
     head += '.';
+    // lo que vino después del año analizado (ene–jun 2026 en un archivo con el anual 2025), en una frase aparte
+    if (FIN && FIN.later && FIN.later.length && N.laterClause) {
+      const desp = N.laterClause(FIN);
+      if (desp) head += ' ' + desp;
+    }
     if (BKA) head = V.BK.headline(BKA, company);
     let rec = '';
     if (recOpt && BKA) {
@@ -12330,7 +12454,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
 
     /* ================= SCQA ================= */
     const nBr = model.meta.hasBranch ? branches.length : 0;
-    let s = company + ' opera en ' + ind.name.toLowerCase().replace(/\s*\(.*\)$/, '') + (nBr ? ' con ' + nBr + ' puntos de venta' : '') + '. En ' + curL + ' vendió ' + f$(c.rev) + (p ? ', ' + fP(d.rev.pct) + ' que en ' + prevL : '') + '.';
+    // sin industria elegida no se dice "opera en otra industria"
+    const indTxt = /^otra/i.test(ind.name) ? '' : ' opera en ' + ind.name.toLowerCase().replace(/\s*\(.*\)$/, '');
+    let s = company + (indTxt ? indTxt + (nBr ? ' con ' + nBr + ' puntos de venta' : '') + '.' : nBr ? ' tiene ' + nBr + ' puntos de venta.' : '') + ' En ' + curL + ' vendió ' + f$(c.rev) + (p ? ', ' + fP(d.rev.pct) + ' que en ' + prevL : '') + '.';
+    s = s.replace(/^\s+/, '');
     const chUp = R.channels.length > 1 ? R.channels.slice().sort((a, b) => (b.dPct || 0) - (a.dPct || 0))[0] : null;
     if (chUp && chUp.dPct > 0.1) s += ' El canal ' + chUp.name + ' fue el motor (' + fP(chUp.dPct, 0) + ').';
     const negs = mainNeg.slice(0, 3).map((f) => f.text.replace(/\.$/, ''));
@@ -12419,7 +12546,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   const fN = (x, d) => U.fmtNum(x, d || 0);
   const has = (x) => x !== null && x !== undefined && isFinite(x);
   const cap1 = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-  const low1 = (s) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+  const low1 = (s) => (s && !/^[A-ZÁÉÍÓÚÑ0-9]{2}/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s); // las siglas (IVA, PPM) no se tocan
 
   /* crecimiento en palabras: "casi triplicó sus ventas", "aumentó sus ventas 12%" */
   N.growthWords = function (r) {
@@ -12614,7 +12741,10 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       if (gms.length >= 3) F({ id: 'B-fin-gm', pillar: 'B', tone: 'neu', score: 42, text: 'Margen bruto por año: ' + U.listJoin(gms.map((x) => fp(FIN.k[x].gm) + ' (' + x + ')')) + '.' });
     }
     if (f.opex > 0 && f.rev > 0) {
-      const parts = [['honorarios', f.fees], ['remuneraciones', f.payrollExp], ['arriendos', f.rent], ['otros gastos', f.opexOther], ['depreciación', f.dep]].filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1]);
+      // en un estado por función (IFRS: "Gasto de administración") la depreciación está repartida entre el costo de
+      // ventas y la administración: no es una parte de los gastos de operación y su peso sobre ellos no significa nada
+      const porFuncion = has(f.sga) && f.sga > 0 && !f.payrollExp && !f.fees && !f.opexOther;
+      const parts = [['honorarios', f.fees], ['remuneraciones', f.payrollExp], ['arriendos', f.rent], ['otros gastos', f.opexOther], ['depreciación', porFuncion ? null : f.dep]].filter((x) => x[1] > 0).sort((a, b) => b[1] - a[1]);
       if (parts.length && api.findings) drop(api.findings, (x) => x.id === 'B-exptop');
       if (parts.length) F({ id: 'B-fin-opex', pillar: 'B', tone: 'neu', score: 46, text: 'Los gastos de operación suman ' + f$(f.opex) + ' (' + fp(f.opex / f.rev) + ' de las ventas): ' + U.listJoin(parts.slice(0, 3).map((x) => x[0] + ' ' + f$(x[1]) + ' (' + fp(x[1] / f.opex, 0) + ')')) + '.' });
       if (f.fees > 0 && f.fees > 1.5 * (f.payrollExp || 0) && f.fees / f.rev > 0.05) why.B.push('La estructura se apoya en honorarios (' + f$(f.fees) + ') más que en contratos de trabajo (' + f$(f.payrollExp || 0) + '): es flexible, pero si son servicios permanentes conviene formalizarlos.');
@@ -12711,7 +12841,9 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const susp = get('susp');
     if (susp) ACT({ pillar: 'D', option: 'eficiencia', prio: prio(susp) + (susp.sev === 'high' ? 1 : 0), short: 'aclarar las cuentas por conciliar y sin rendir', title: 'Aclarar las cuentas por conciliar y sin rendir', detail: susp.action + ' Hoy suman ' + f$(susp.impact) + '.', area: 'Contabilidad y control interno', horizon: 30, impact: null, impactText: 'cifras confiables y menos riesgo de gastos rechazados', kpi: 'Saldo de cuentas por conciliar' });
     const relX = get('rel');
-    if (relX) ACT({ pillar: 'D', option: 'eficiencia', prio: prio(relX), short: 'documentar y cobrar los saldos con socios y relacionadas', title: 'Documentar y cobrar los saldos con socios y relacionadas', detail: relX.action + ' Hoy suman ' + f$(relX.impact) + '.', area: 'Socios y contabilidad', horizon: 60, impact: null, cash: relX.impact * 0.5, impactText: 'recupera caja y evita que el SII los trate como retiros', kpi: 'Saldo con socios y relacionadas' });
+    // (sin socios en las cuentas, la acción es cobrar a las entidades relacionadas; lo de los retiros no aplica)
+    const relSoc = relX && relX.area !== 'Relacionadas';
+    if (relX) ACT({ pillar: 'D', option: 'eficiencia', prio: prio(relX), short: relSoc ? 'documentar y cobrar los saldos con socios y relacionadas' : 'revisar y cobrar los saldos con entidades relacionadas', title: relSoc ? 'Documentar y cobrar los saldos con socios y relacionadas' : 'Revisar y cobrar los saldos con entidades relacionadas', detail: relX.action + ' Hoy suman ' + f$(relX.impact) + '.', area: relSoc ? 'Socios y contabilidad' : 'Finanzas', horizon: 60, impact: null, cash: relX.impact * 0.5, impactText: relSoc ? 'recupera caja y evita que el SII los trate como retiros' : 'recupera caja', kpi: relSoc ? 'Saldo con socios y relacionadas' : 'Saldo con entidades relacionadas' });
     const hon = aud.find((x) => /^hon-ret/.test(x.id));
     if (hon) ACT({ pillar: 'D', option: 'eficiencia', prio: prio(hon), short: 'regularizar honorarios y retenciones', title: 'Regularizar honorarios y retenciones', detail: hon.action, area: 'Tributario', horizon: 30, impact: null, impactText: 'evita gastos rechazados e impuestos de retiros', kpi: 'Retenciones de honorarios' });
     const ppm = get('ppm-rate');
@@ -12736,8 +12868,8 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   /* ---------- evidencia (tablas y gráficos) ---------- */
   N.finExhibits = function (FIN, ex) {
     const p = FIN.last;
-    ex('B', { kind: 'statements', title: 'Estado de resultados comparativo', caption: 'Montos de cada año, variación del último año y peso sobre los ingresos (análisis horizontal y vertical).', data: { rows: FIN.inc, periods: FIN.periods, base: 'ingresos' } });
-    ex('D', { kind: 'statements', title: 'Balance general comparativo', caption: 'Estado de situación al cierre de cada período, con la variación del último año y el peso de cada partida sobre el activo total.', data: { rows: FIN.bal, periods: FIN.periods, base: 'activo' } });
+    ex('B', { kind: 'statements', title: 'Estado de resultados comparativo', caption: 'Montos de cada año, variación del último año y peso sobre los ingresos (análisis horizontal y vertical).', data: { rows: FIN.inc, periods: FIN.inc.periods || FIN.periods, base: 'ingresos' } });
+    ex('D', { kind: 'statements', title: 'Balance general comparativo', caption: 'Estado de situación al cierre de cada período, con la variación del último año y el peso de cada partida sobre el activo total.', data: { rows: FIN.bal, periods: FIN.bal.periods || FIN.periods, base: 'activo' } });
     const cf = FIN.cash.length ? FIN.cash[FIN.cash.length - 1] : null;
     if (cf) {
       let steps;
@@ -12801,14 +12933,24 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const giro = FIN.giro ? ' (' + low1(V.ACC ? V.ACC.displayName(FIN.giro) : FIN.giro.toLowerCase()) + ')' : '';
     const first = FIN.periods.find((x) => FIN.fig[x].rev > 0);
     const partial = (f.months || 12) < 12;
-    let s = company + giro + (partial ? ' registró en ' + p + ' (' + monthsTxt(f) + ') ingresos por ' : ' cerró ' + p + ' con ingresos de ') + f$(f.rev) + (first && first !== p ? ' (' + f$(FIN.fig[first].rev) + ' en ' + first + ')' : '') + ', ' + (f.ni >= 0 ? 'una utilidad ' + (unreliable(FIN) ? 'todavía no confiable ' : '') + 'de ' : 'una pérdida de ') + f$(Math.abs(f.ni)) + ' y activos por ' + f$(f.ta) + '.';
+    // la cifra de comparación es la del período comparable: el mismo tramo del año anterior en un período parcial, o
+    // el año anterior en uno completo (antes era el primer período del archivo: un trimestre de 2026 contra el año 2024)
+    const pc = partial ? (FIN.comp && FIN.comp[p]) || null : FIN.prev && (FIN.fig[FIN.prev].months || 12) === (f.months || 12) ? FIN.prev : null;
+    const fpc = pc ? (FIN.fig[pc] || (FIN.figComp && FIN.figComp[pc])) : null;
+    let s = company + giro + (partial ? ' registró en ' + p + ' (' + monthsTxt(f) + ') ingresos por ' : ' cerró ' + p + ' con ingresos de ') + f$(f.rev) + (fpc && fpc.rev > 0 ? ' (' + f$(fpc.rev) + ' en ' + pc + ')' : '') + ', ' + (f.ni >= 0 ? 'una utilidad ' + (unreliable(FIN) ? 'todavía no confiable ' : '') + 'de ' : 'una pérdida de ') + f$(Math.abs(f.ni)) + (fpc && has(fpc.ni) && fpc.ni !== 0 ? ' (' + (fpc.ni < 0 ? 'pérdida de ' : 'utilidad de ') + f$(Math.abs(fpc.ni)) + ' en ' + pc + ')' : '') + ' y activos por ' + f$(f.ta) + '.';
     const x29 = FIN.f29 && FIN.f29[p];
     if (x29 && x29.diff > x29.sii * 0.2) s += ' Al SII declaró ventas por ' + f$(x29.sii) + ' en el mismo período.';
     const highs = FIN.audit.filter((a) => a.sev === 'high');
     const relia = highs.find((a) => /^(f29-gap|no-cogs|st-notes|inv-frozen)/.test(a.id));
     const top = relia ? [relia].concat(highs.filter((a) => a !== relia && !/^(st-notes|inv-frozen|gm-jump)/.test(a.id)).slice(0, 1)) : highs.slice(0, 2);
     const short = (a) => a.short || low1(a.title);
-    let c = top.length ? 'Sin embargo, ' + short(top[0]) + (top[1] ? '; además, ' + short(top[1]) : '') + '.' : 'Los indicadores no muestran alertas graves.';
+    // sin hallazgos graves de auditoría, la complicación sale de las cifras: pérdidas, Z″ en zona de riesgo, patrimonio
+    // delgado o falta de liquidez. "Los indicadores no muestran alertas graves" solo si de verdad no hay ninguna
+    const alertas = [];
+    if (has(f.ni) && f.ni < 0 && !unreliable(FIN)) alertas.push('pierde dinero (' + f$(-f.ni) + ' en ' + p + ')');
+    if (k.z && k.z.zone === 'de riesgo') alertas.push('el Z″ de Altman está en zona de riesgo (' + fN(k.z.z, 2) + ')');
+    if (has(k.eqRatio) && k.eqRatio < 0.2) alertas.push(k.eqRatio <= 0 ? 'el patrimonio es negativo' : 'los dueños financian solo el ' + fp(k.eqRatio, 0) + ' de los activos');
+    let c = top.length ? 'Sin embargo, ' + short(top[0]) + (top[1] ? '; además, ' + short(top[1]) : '') + '.' : alertas.length ? 'Sin embargo, ' + U.listJoin(alertas.slice(0, 2)) + '.' : 'Los indicadores no muestran alertas graves.';
     if (has(k.liq) && k.liq < 1) c += ' La liquidez corriente es ' + fN(k.liq, 2) + ': los activos de corto plazo no cubren las deudas de corto plazo.';
     const sup = FIN.audit.find((x) => x.id === 'suppliers');
     const q = relia && relia.id !== 'f29-gap' ? (sup ? '¿Cómo ordenar las cifras y sostener el crecimiento sin depender del crédito de los proveedores?' : '¿Qué hay que ordenar primero para decidir con cifras confiables?') : sup ? '¿Cómo sostener el crecimiento sin depender del crédito de los proveedores?' : f.ni < 0 ? '¿Cómo volver a utilidades antes de que se agote la caja?' : has(k.liq) && k.liq < 1 ? '¿Cómo asegurar la caja para operar sin tensión?' : '¿Cómo sostener la rentabilidad y financiar el crecimiento?';
@@ -12998,6 +13140,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     if (rd.length) lim.push('Los balances se leyeron desde PDF escaneado; ' + U.listJoin(rd.map((r) => r.fixed + ' monto(s) de ' + r.period)) + ' se corrigieron automáticamente con las cuadraturas del propio balance (todas las sumas cuadran).');
     lim.push('Las proyecciones usan supuestos simples y transparentes (se pueden cambiar en el simulador): no reemplazan un presupuesto detallado.');
     S('10. Límites de este análisis', lim);
+    secs.forEach((x, i) => (x.label = String(x.h).replace(/^\d+\./, i + 1 + '.')));
     return { title: 'Informe del consultor', subtitle: company + ' · ejercicio ' + p + (p0 ? ' comparado con ' + p0 : ''), sections: secs, adjusted: adj };
   };
 })(typeof globalThis !== 'undefined' ? (globalThis.V = globalThis.V || {}) : (window.V = window.V || {}));
@@ -13016,7 +13159,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
   const fN = (x, d) => U.fmtNum(x, d || 0);
   const has = (x) => x !== null && x !== undefined && isFinite(x);
   const cap1 = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
-  const low1 = (s) => (s ? s.charAt(0).toLowerCase() + s.slice(1) : s);
+  const low1 = (s) => (s && !/^[A-ZÁÉÍÓÚÑ0-9]{2}/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s); // las siglas (IVA, PPM) no se tocan
   const MAX_YEARS = 5;
   N.MAX_YEARS = MAX_YEARS;
 
@@ -13157,21 +13300,24 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     const f = FIN.fig[p];
     if (!f || !(f.rev > 0)) return null;
     const nz = (x) => (has(x) ? x : 0);
-    const dep = nz(f.dep);
-    const opexCash = nz(f.opex) - (dep && nz(f.opex) >= dep ? dep : 0);
+    // estado por función (IFRS: costo de ventas y gastos de administración, con la depreciación repartida dentro de
+    // ellos): el paso de gastos es la línea del estado y la depreciación no se resta aparte (era un paso inventado)
+    const porFuncion = has(f.sga) && f.sga > 0 && !f.payrollExp && !f.fees && !f.opexOther && !f.dist && !f.sgv;
+    const dep = porFuncion ? 0 : nz(f.dep);
+    const opexCash = porFuncion ? f.sga : nz(f.opex) - (dep && nz(f.opex) >= dep ? dep : 0);
     const steps = [{ label: 'Ventas', value: f.rev, kind: 'total' }];
     if (Math.abs(nz(f.cogs)) > 0.5) {
       steps.push({ label: 'Costo', full: 'Costo de ventas', value: -Math.abs(f.cogs), kind: 'delta' });
       steps.push({ label: 'Margen bruto', value: f.gp, kind: 'total' });
     }
-    if (Math.abs(opexCash) > 0.5) steps.push({ label: 'Gastos', full: 'Gastos de operación', value: -opexCash, kind: 'delta' });
+    if (Math.abs(opexCash) > 0.5) steps.push(porFuncion ? { label: 'Gastos adm.', full: 'Gastos de administración y ventas', value: -opexCash, kind: 'delta' } : { label: 'Gastos', full: 'Gastos de operación', value: -opexCash, kind: 'delta' });
     if (dep > 0.5 && nz(f.opex) >= dep) steps.push({ label: 'Depreciación', value: -dep, kind: 'delta' });
     // lo que falta para llegar al resultado operacional informado (otras ganancias o gastos de la operación, gastos que
     // el estado presenta por naturaleza): sin este paso, la cascada no conecta con su total
     if (has(f.ebit)) {
       const reached = (Math.abs(nz(f.cogs)) > 0.5 ? f.gp : f.rev) - (Math.abs(opexCash) > 0.5 ? opexCash : 0) - (dep > 0.5 && nz(f.opex) >= dep ? dep : 0);
       const plug = f.ebit - reached;
-      if (Math.abs(plug) > Math.abs(f.rev) * 0.001) steps.push({ label: 'Otros oper.', full: 'Otros ingresos y gastos de la operación', value: plug, kind: 'delta' });
+      if (Math.abs(plug) > Math.abs(f.rev) * 0.001) steps.push({ label: 'Otros oper.', full: porFuncion ? 'Otras ganancias (pérdidas) de la operación' : 'Otros ingresos y gastos de la operación', value: plug, kind: 'delta' });
     }
     steps.push({ label: 'Operacional', full: 'Resultado operacional', value: f.ebit, kind: 'total' });
     const other = nz(f.othinc) - nz(f.othexp);
@@ -15005,7 +15151,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
     reg = reg || {};
     let h = '<section class="sec memo" id="r-memo"><div class="sec-head"><div class="row1"><span class="sec-letter">✎</span><h2>' + esc(m.title) + '</h2></div><span class="q">' + esc(m.subtitle) + '. Redactado por el motor de reglas a partir de las cifras, sin IA. Cada sección resume su idea en una frase y un gráfico; el texto completo está en «Ver detalle».</span></div>';
     m.sections.forEach((sct, si) => {
-      h += '<div class="memo-sec"><h3>' + esc(sct.h) + '</h3>';
+      h += '<div class="memo-sec"><h3>' + esc(sct.label || sct.h) + '</h3>';
       if (sct.lead === undefined) h += RU.memoText(sct, m);
       else {
         h += '<p class="memo-lead">' + esc(sct.lead) + '</p>';
@@ -15527,7 +15673,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       let mr = 4;
       rep.memo.sections.forEach((s) => {
         const h = ws.getCell(mr, 2);
-        h.value = s.h;
+        h.value = s.label || s.h;
         h.font = { bold: true, size: 12, color: { argb: NAVY } };
         mr++;
         if (s.lead && (s.p.length > 1 || s.p[0] !== s.lead)) {
@@ -15652,7 +15798,11 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
       ws.getCell(er, 1).font = { size: 14, bold: true, color: { argb: NAVY } };
       er += 2;
       const stmt = (title, rows, baseLabel) => {
-        const cols = [{ h: title, k: 'l' }].concat(ps.map((p) => ({ h: p, v: (r) => (r.vals && r.vals[p] !== null && r.vals[p] !== undefined ? r.sign * r.vals[p] : null), f: 'money' }))).concat(ps.length > 1 ? [{ h: 'Var. %', v: (r) => (r.dPct === undefined ? null : r.dPct), f: 'pctS' }] : []).concat([{ h: '% ' + baseLabel + ' ' + last, v: (r) => (r.vpct && r.vpct[last] !== null && r.vpct[last] !== undefined ? r.sign * r.vpct[last] : null), f: 'pct' }]);
+        // (cada estado con sus períodos: un cierre con solo balance no es una columna del estado de resultados)
+        const pp = rows.periods || ps;
+        const lp = pp[pp.length - 1];
+        const vs = (rows.find((r) => r.vs) || {}).vs;
+        const cols = [{ h: title, k: 'l' }].concat(pp.map((p) => ({ h: p, v: (r) => (r.vals && r.vals[p] !== null && r.vals[p] !== undefined ? r.sign * r.vals[p] : null), f: 'money' }))).concat(pp.length > 1 ? [{ h: 'Var. %' + (vs ? ' vs ' + vs : ''), v: (r) => (r.dPct === undefined ? null : r.dPct), f: 'pctS' }] : []).concat([{ h: '% ' + baseLabel + ' ' + lp, v: (r) => (r.vpct && r.vpct[lp] !== null && r.vpct[lp] !== undefined ? r.sign * r.vpct[lp] : null), f: 'pct' }]);
         const start = er;
         er = table(ws, er, null, cols, rows.map((r) => (r.head ? { l: r.l.toUpperCase(), vals: {}, vpct: {}, sign: 1, head: true } : r)), { noZebra: true });
         // negritas en totales y títulos
@@ -16568,7 +16718,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10.5);
         setC(NAVY);
-        doc.text(T(s.h), ML, y, { baseline: 'top' });
+        doc.text(T(s.label || s.h), ML, y, { baseline: 'top' });
         y += 5.5;
         const numbered = s.p.every((x) => /^\d+\)\s/.test(x));
         s.p.forEach((ptxt, i) => {
@@ -16609,7 +16759,7 @@ details.blk summary { cursor: pointer; font-size: 14px; padding: 4px 0; }
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10.5);
           setC(NAVY);
-          doc.text(T(s.h), ML, y, { baseline: 'top' });
+          doc.text(T(s.label || s.h), ML, y, { baseline: 'top' });
           y += 5.5;
           para(s.lead, { size: si === 0 ? 11 : 10, font: 'times', style: 'bold', color: INK, after: 2.2 });
           if (s.chart && s.chart.spec) await chart(s.chart.spec, s.chart.title, s.chart.caption, null, 80);

@@ -1,8 +1,35 @@
-# Vértice Gerencial · versión 2.5
+# Vértice Gerencial · versión 2.6
 
 Reportes para la toma de decisiones a partir de los archivos que entrega la empresa (Excel, CSV, PDF con texto o escaneado, imágenes, Word, PowerPoint, exportes de Power BI, JSON, XML, HTML o una tabla pegada). El informe se arma con el **Principio de la Pirámide** (Barbara Minto): primero la conclusión y la decisión que se pide, después cuatro argumentos MECE con su evidencia.
 
-## Qué hay de nuevo en la 2.5
+## Qué hay de nuevo en la 2.6
+
+**Un solo período en todo el informe (y en las tres descargas)**
+
+- Todo el informe usa el período de la portada: mensaje, indicadores, informe del consultor, tablas y las descargas en PDF, PowerPoint y Excel. Antes, con el anual 2025 y el trimestre de 2026 cargados juntos, la portada decía "2025 vs 2024" pero el mensaje hablaba de ene–mar 2026, y "Ingresos" valía $ 47.915 MM en un lugar y $ 10.801 MM en otro.
+- El período posterior se comenta aparte y contra su mismo tramo del año anterior: "En ene–mar 2026, el último período disponible, vendió $ 10.801 MM (+3% frente a ene–mar 2025)". Antes se anualizaba el trimestre contra el año completo y decía, sin ser cierto, que las ventas bajaron 10%.
+- El PowerPoint trae los mismos indicadores que el PDF y el Excel (antes faltaban el resultado del ejercicio y el patrimonio).
+
+**Textos que dicen lo que pasó**
+
+- Las pérdidas se describen como pérdidas: "la pérdida operacional se redujo 29% (de $ 4.786 MM a $ 3.374 MM)" en vez de "el resultado operacional subió 29%"; "pasó de una pérdida de $ 904 MM a una ganancia de $ 557 MM".
+- Los **impuestos diferidos** ya no se leen como IVA o PPM por recuperar. En TVN eso llevaba a recomendar "acelerar la recuperación de impuestos" por $ 7.293 MM de caja que no existe.
+- La complicación sale de las cifras (pérdidas, Z″ en zona de riesgo, patrimonio delgado) y ya no dice "los indicadores no muestran alertas graves" en una empresa en pérdida.
+- Un inventario menor al 2% del activo se informa como menor, no como "caja inmovilizada".
+- Un estado por función (IFRS) se respeta: el gasto de administración es la línea del estado, la depreciación no se resta aparte y las otras ganancias de la operación no son un gasto negativo (no más "% del total 105,7%").
+- Saldos con **entidades relacionadas** de una sociedad sin socios (una S.A. o una empresa del Estado) ya no se tratan como retiros de socios.
+- Con solo estados financieros no se dibujan meses que el documento no trae (ingresos mensuales, estacionalidad, margen mensual), y la lista de datos faltantes se reduce a lo que sirve: el detalle de ventas.
+- Un balance que no se pudo leer deja la solidez en "Sin datos" en vez de afirmar algo sobre la liquidez.
+- Las ventas de un estado anual se rotulan con el año ("2025"), no con el mes de cierre ("diciembre 2025").
+
+**Lectura**
+
+- PDF con fuentes de codificación desordenada (el texto se ve bien pero se extrae como "01O34RO637("): Vértice lo detecta y lee esas páginas con OCR, dando prioridad a los estados principales. Los estados anuales 2025 de TVN ahora generan informe.
+- Las tablas leídas con OCR que tienen pocas líneas de grilla se arman por la posición de las palabras.
+- El análisis razonado (en MM$) ya no reemplaza a los estados principales.
+- Las celdas con errores de Excel (#REF!, #N/A, #DIV/0!) se avisan y bajan la calificación de calidad.
+
+## Lo que trajo la 2.5
 
 **Lectura de estados financieros en PDF (formato IFRS y CMF)**
 
